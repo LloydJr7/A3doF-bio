@@ -186,3 +186,32 @@ def atualizar_animal(animal_id: int, animal: AnimalAtualizacao):
         "id": id_atualizado
     }
 
+
+#desativar um animal sem apagar seu cadastro
+@app.delete("/animais/{animal_id}")
+def desativar_animal(animal_id: int):
+    with engine.begin() as conexao:
+        resultado = conexao.execute(
+            text("""
+                UPDATE animais
+                SET ativo = FALSE
+                WHERE id = :animal_id
+                  AND ativo = TRUE
+                RETURNING id
+            """),
+            {"animal_id": animal_id}
+        )
+
+        id_desativado = resultado.scalar_one_or_none()
+
+    if id_desativado is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Animal não encontrado ou já desativado"
+        )
+
+    return {
+        "mensagem": "Animal desativado com sucesso!",
+        "id": id_desativado
+    }
+
