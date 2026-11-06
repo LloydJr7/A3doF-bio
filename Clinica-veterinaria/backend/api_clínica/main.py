@@ -129,3 +129,60 @@ def buscar_animal(animal_id: int):
         )
 
     return dict(animal)
+
+
+# modelo para atualizar os dados de um animal
+class AnimalAtualizacao(BaseModel):
+    nome: str | None = Field(default=None, min_length=1, max_length=100)
+    sexo: str | None = None
+    cor: str | None = None
+    peso_atual: float | None = Field(default=None, gt=0)
+
+
+# atualizar os dados de um animal
+@app.put("/animais/{animal_id}")
+def atualizar_animal(animal_id: int, animal: AnimalAtualizacao):
+    dados = animal.model_dump(exclude_unset=True)
+
+    if not dados:
+        raise HTTPException(
+            status_code=400,
+            detail="Informe pelo menos um campo para atualizar"
+        )
+
+    if any(valor is None for valor in dados.values()):
+        raise HTTPException(
+            status_code=400,
+            detail="Os campos enviados não podem ser nulos"
+        )
+
+    campos = ", ".join(
+        f"{campo} = :{campo}" for campo in dados
+    )
+
+    dados["animal_id"] = animal_id
+
+    with engine.begin() as conexao:
+        resultado = conexao.execute(
+            text(f"""
+                UPDATE animais
+                SET {campos}
+                WHERE id = :animal_id
+                RETURNING id
+            """),
+            dados
+        )
+
+        id_atualizado = resultado.scalar_one_or_none()
+
+    if id_atualizado is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Animal não encontrado"
+        )
+
+    return {
+        "mensagem": "Animal atualizado com sucesso!",
+        "id": id_atualizado
+    }
+
