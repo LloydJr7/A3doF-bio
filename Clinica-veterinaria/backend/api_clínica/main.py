@@ -1,4 +1,5 @@
 
+from datetime import date
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import text
@@ -214,4 +215,138 @@ def desativar_animal(animal_id: int):
         "mensagem": "Animal desativado com sucesso!",
         "id": id_desativado
     }
+
+
+# Modelo para cadastrar microchips
+class MicrochipCadastro(BaseModel):
+    animal_id: int = Field(gt=0)
+    codigo: str = Field(min_length=1, max_length=50)
+    data_implantacao: date | None = None
+    observacoes: str | None = None
+
+
+# Cadastrar microchip em um animal
+@app.post("/microchips", status_code=201)
+def cadastrar_microchip(microchip: MicrochipCadastro):
+    with engine.begin() as conexao:
+        animal = conexao.execute(
+            text("""
+                SELECT id
+                FROM animais
+                WHERE id = :animal_id AND ativo = TRUE
+            """),
+            {"animal_id": microchip.animal_id}
+        ).first()
+
+        if animal is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Animal não encontrado ou desativado"
+            )
+
+        existente = conexao.execute(
+            text("""
+                SELECT id
+                FROM microchips
+                WHERE animal_id = :animal_id
+                   OR codigo = :codigo
+            """),
+            {
+                "animal_id": microchip.animal_id,
+                "codigo": microchip.codigo
+            }
+        ).first()
+
+        if existente is not None:
+            raise HTTPException(
+                status_code=409,
+                detail="Animal ou código já possui microchip cadastrado"
+            )
+
+        resultado = conexao.execute(
+            text("""
+                INSERT INTO microchips
+                    (animal_id, codigo, data_implantacao, observacoes)
+                VALUES
+                    (:animal_id, :codigo, :data_implantacao, :observacoes)
+                RETURNING id
+            """),
+            microchip.model_dump()
+        )
+
+        microchip_id = resultado.scalar_one()
+
+    return {
+        "mensagem": "Microchip cadastrado com sucesso!",
+        "id": microchip_id
+    }
+
+
+# Listar todos os microchips cadastrados
+@app.get("/microchips")
+def listar_microchips():
+    with engine.connect() as conexao:
+        resultado = conexao.execute(
+            text("""
+                SELECT
+                    m.id,
+                    m.animal_id,
+                    a.nome AS animal,
+                    m.codigo,
+                    m.data_implantacao,
+                    m.observacoes,
+                    m.ativo
+                FROM microchips m
+                JOIN animais a
+                    ON m.animal_id = a.id
+                ORDER BY m.id
+            """)
+        )
+
+        microchips = resultado.mappings().all()
+
+    return [dict(microchip) for microchip in microchips]
+
+
+# Buscar um animal pelo código do microchip
+@app.get("/microchips/codigo/{codigo}")
+def buscar_microchip_por_codigo(codigo: str):
+    with engine.connect() as conexao:
+        resultado = conexao.execute(
+            text("""
+                SELECT
+                    m.id AS microchip_id,
+                    m.codigo,
+                    m.data_implantacao,
+                    m.observacoes,
+                    a.id AS animal_id,
+                    a.nome AS animal,
+                    e.nome AS especie,
+                    r.nome AS raca,
+                    a.sexo,
+                    a.cor,
+                    a.peso_atual
+                FROM microchips m
+                JOIN animais a
+                    ON m.animal_id = a.id
+                JOIN especies e
+                    ON a.especie_id = e.id
+                LEFT JOIN racas r
+                    ON a.raca_id = r.id
+                WHERE m.codigo = :codigo
+                  AND m.ativo = TRUE
+                  AND a.ativo = TRUE
+            """),
+            {"codigo": codigo}
+        )
+
+        microchip = resultado.mappings().first()
+
+    if microchip is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Microchip não encontrado ou inativo"
+        )
+
+    return dict(microchip)
 
