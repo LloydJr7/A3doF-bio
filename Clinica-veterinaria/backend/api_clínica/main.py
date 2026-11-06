@@ -1,5 +1,5 @@
 
-from datetime import date
+from datetime import date, datetime
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import text
@@ -308,7 +308,7 @@ def listar_microchips():
     return [dict(microchip) for microchip in microchips]
 
 
-# Buscar um animal pelo código do microchip
+# Buscar um animal pelocodigo do microchip
 @app.get("/microchips/codigo/{codigo}")
 def buscar_microchip_por_codigo(codigo: str):
     with engine.connect() as conexao:
@@ -350,3 +350,218 @@ def buscar_microchip_por_codigo(codigo: str):
 
     return dict(microchip)
 
+#Modelo para cadastrar consultas veterinarias
+class ConsultaCadastro(BaseModel):
+    animal_id: int = Field(gt=0)
+    veterinario_id: int | None = Field(default=None, gt=0)
+    data_hora: datetime
+    motivo: str | None = None
+    observacoes: str | None = None
+
+
+# Cadastrar uma consulta veterinaria
+@app.post("/consultas", status_code=201)
+def cadastrar_consulta(consulta: ConsultaCadastro):
+    with engine.begin() as conexao:
+
+        # verificar se o animal existe e esta ativo
+        animal = conexao.execute(
+            text("""
+                SELECT id
+                FROM animais
+                WHERE id = :animal_id
+                  AND ativo = TRUE
+            """),
+            {"animal_id": consulta.animal_id}
+        ).first()
+
+        if animal is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Animal não encontrado ou desativado"
+            )
+
+        #cadastrar a consulta no banco
+        resultado = conexao.execute(
+            text("""
+                INSERT INTO consultas
+                    (
+                        animal_id,
+                        veterinario_id,
+                        data_hora,
+                        motivo,
+                        observacoes
+                    )
+                VALUES
+                    (
+                        :animal_id,
+                        :veterinario_id,
+                        :data_hora,
+                        :motivo,
+                        :observacoes
+                    )
+                RETURNING id
+            """),
+            consulta.model_dump()
+        )
+
+        consulta_id = resultado.scalar_one()
+
+    return {
+        "mensagem": "Consulta cadastrada com sucesso!",
+        "id": consulta_id
+    }
+
+#lista todas as consultas veterinaria
+@app.get("/consultas")
+def listar_consultas():
+    with engine.connect() as conexao:
+        resultado = conexao.execute(
+            text("""
+                SELECT
+                    c.id,
+                    a.nome AS animal,
+                    c.veterinario_id,
+                    c.data_hora,
+                    c.motivo,
+                    c.status,
+                    c.observacoes
+                FROM consultas c
+                JOIN animais a
+                    ON c.animal_id = a.id
+                WHERE c.ativo = TRUE
+                ORDER BY c.data_hora
+            """)
+        )
+
+        consultas = resultado.mappings().all()
+
+    return [dict(consulta) for consulta in consultas]
+
+# Buscar uma consulta pelo ID
+@app.get("/consultas/{consulta_id}")
+def buscar_consulta(consulta_id: int):
+    with engine.connect() as conexao:
+        resultado = conexao.execute(
+            text("""
+                SELECT
+                    c.id,
+                    c.animal_id,
+                    a.nome AS animal,
+                    c.veterinario_id,
+                    c.data_hora,
+                    c.motivo,
+                    c.status,
+                    c.observacoes
+                FROM consultas c
+                JOIN animais a
+                    ON c.animal_id = a.id
+                WHERE c.id = :consulta_id
+                  AND c.ativo = TRUE
+            """),
+            {"consulta_id": consulta_id}
+        )
+
+        consulta = resultado.mappings().first()
+
+    if consulta is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Consulta não encontrada"
+        )
+
+    return dict(consulta)
+
+# modelo para atualizar consultas
+class ConsultaAtualizacao(BaseModel):
+    data_hora: datetime | None = None
+    motivo: str | None = None
+    status: str | None = None
+    observacoes: str | None = None
+
+
+#    atualizar uma consulta
+@app.put("/consultas/{consulta_id}")
+def atualizar_consulta(consulta_id: int, consulta: ConsultaAtualizacao):
+    dados = consulta.model_dump(exclude_unset=True)
+
+    if not dados:
+        raise HTTPException(
+            status_code=400,
+            detail="Informe pelo menos um campo para atualizar"
+        )
+
+    if any(valor is None for valor in dados.values()):
+        raise HTTPException(
+            status_code=400,
+            detail="Os campos enviados não podem ser nulos"
+        )
+
+    if "status" in dados and dados["status"] not in (
+        "agendada", "realizada", "cancelada"
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Status inválido"
+        )
+
+    campos = ", ".join(
+        f"{campo} = :{campo}" for campo in dados
+    )
+
+    dados["consulta_id"] = consulta_id
+
+    with engine.begin() as conexao:
+        resultado = conexao.execute(
+            text(f"""
+                UPDATE consultas
+                SET {campos}
+                WHERE id = :consulta_id
+                  AND ativo = TRUE
+                RETURNING id
+            """),
+            dados
+        )
+
+        id_atualizado = resultado.scalar_one_or_none()
+
+    if id_atualizado is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Consulta não encontrada"
+        )
+
+    return {
+        "mensagem": "Consulta atualizada com sucesso!",
+        "id": id_atualizado
+    }
+
+
+#cancelar uma consulta sem apagar o registro
+@app.delete("/consultas/{consulta_id}")
+def cancelar_consulta(consulta_id: int):
+    with engine.begin() as conexao:
+        resultado = conexao.execute(
+            text("""
+                UPDATE consultas
+                SET status = 'cancelada'
+                WHERE id = :consulta_id
+                  AND ativo = TRUE
+                  AND status = 'agendada'
+                RETURNING id
+            """),
+            {"consulta_id": consulta_id}
+        )
+
+        id_cancelado = resultado.scalar_one_or_none()
+
+    if id_cancelado is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Consulta não encontrada ou não pode ser cancelada"
+        )
+
+    return {
+        "mensagem": "Consulta cancelada com sucesso!",
+        "id": id_cancelado
+    }
