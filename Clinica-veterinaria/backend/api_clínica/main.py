@@ -1,5 +1,5 @@
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from database import engine
@@ -20,7 +20,6 @@ def inicio():
     }
 
 
-# Modelo para cadastrar animais
 class AnimalCadastro(BaseModel):
     nome: str = Field(min_length=1, max_length=100)
     especie_id: int = Field(gt=0)
@@ -31,7 +30,6 @@ class AnimalCadastro(BaseModel):
     peso_atual: float | None = Field(default=None, gt=0)
 
 
-# Cadastrar um animal
 @app.post("/animais", status_code=201)
 def cadastrar_animal(animal: AnimalCadastro):
     with engine.begin() as conexao:
@@ -70,7 +68,7 @@ def cadastrar_animal(animal: AnimalCadastro):
     }
 
 
-# Listar todos os animais cadastrados
+
 @app.get("/animais")
 def listar_animais():
     with engine.connect() as conexao:
@@ -96,3 +94,38 @@ def listar_animais():
         animais = resultado.mappings().all()
 
     return [dict(animal) for animal in animais]
+
+
+
+@app.get("/animais/{animal_id}")
+def buscar_animal(animal_id: int):
+    with engine.connect() as conexao:
+        resultado = conexao.execute(
+            text("""
+                SELECT
+                    a.id,
+                    a.nome,
+                    e.nome AS especie,
+                    r.nome AS raca,
+                    a.sexo,
+                    a.cor,
+                    a.peso_atual
+                FROM animais a
+                JOIN especies e
+                    ON a.especie_id = e.id
+                LEFT JOIN racas r
+                    ON a.raca_id = r.id
+                WHERE a.id = :animal_id
+            """),
+            {"animal_id": animal_id}
+        )
+
+        animal = resultado.mappings().first()
+
+    if animal is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Animal não encontrado"
+        )
+
+    return dict(animal)
