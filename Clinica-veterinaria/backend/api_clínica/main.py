@@ -1,4 +1,3 @@
-
 from datetime import date, datetime
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
@@ -67,27 +66,29 @@ def cadastrar_animal(animal: AnimalCadastro):
         "mensagem": "Animal cadastrado com sucesso!",
         "id": animal_id
     }
-
-
-
 @app.get("/animais")
 def listar_animais():
     with engine.connect() as conexao:
         resultado = conexao.execute(
             text("""
                 SELECT
-                    a.id,
-                    a.nome,
-                    e.nome AS especie,
-                    r.nome AS raca,
-                    a.sexo,
-                    a.cor,
-                    a.peso_atual
+                a.id,
+                a.nome,
+                e.nome AS especie,
+                r.nome AS raca,
+                a.tutor_id,
+                t.nome_completo AS tutor,
+                a.sexo,
+                a.cor,
+                a.peso_atual
                 FROM animais a
                 JOIN especies e
-                    ON a.especie_id = e.id
+                ON a.especie_id = e.id
                 LEFT JOIN racas r
-                    ON a.raca_id = r.id
+                ON a.raca_id = r.id
+                LEFT JOIN tutor t
+                ON a.tutor_id = t.id
+                WHERE a.ativo = TRUE
                 ORDER BY a.id
             """)
         )
@@ -117,11 +118,13 @@ def buscar_animal(animal_id: int):
                 LEFT JOIN racas r
                     ON a.raca_id = r.id
                 WHERE a.id = :animal_id
+                  AND a.ativo = TRUE
             """),
             {"animal_id": animal_id}
         )
 
         animal = resultado.mappings().first()
+        
 
     if animal is None:
         raise HTTPException(
@@ -169,18 +172,15 @@ def atualizar_animal(animal_id: int, animal: AnimalAtualizacao):
                 UPDATE animais
                 SET {campos}
                 WHERE id = :animal_id
+                  AND ativo = TRUE
                 RETURNING id
             """),
             dados
         )
-
         id_atualizado = resultado.scalar_one_or_none()
 
     if id_atualizado is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Animal não encontrado"
-        )
+        raise HTTPException(status_code=404, detail="Animal não encontrado ou desativado")
 
     return {
         "mensagem": "Animal atualizado com sucesso!",
@@ -288,67 +288,43 @@ def listar_microchips():
     with engine.connect() as conexao:
         resultado = conexao.execute(
             text("""
-                SELECT
-                    m.id,
-                    m.animal_id,
-                    a.nome AS animal,
-                    m.codigo,
-                    m.data_implantacao,
-                    m.observacoes,
-                    m.ativo
+                SELECT m.id, m.animal_id, a.nome AS animal,
+                       m.codigo, m.data_implantacao, m.observacoes, m.ativo
                 FROM microchips m
-                JOIN animais a
-                    ON m.animal_id = a.id
+                JOIN animais a ON m.animal_id = a.id
                 ORDER BY m.id
             """)
         )
-
         microchips = resultado.mappings().all()
-
     return [dict(microchip) for microchip in microchips]
 
 
-# Buscar um animal pelocodigo do microchip
+# Buscar microchip pelo codigo
 @app.get("/microchips/codigo/{codigo}")
 def buscar_microchip_por_codigo(codigo: str):
     with engine.connect() as conexao:
         resultado = conexao.execute(
             text("""
-                SELECT
-                    m.id AS microchip_id,
-                    m.codigo,
-                    m.data_implantacao,
-                    m.observacoes,
-                    a.id AS animal_id,
-                    a.nome AS animal,
-                    e.nome AS especie,
-                    r.nome AS raca,
-                    a.sexo,
-                    a.cor,
-                    a.peso_atual
+                SELECT m.id AS microchip_id, m.codigo,
+                       m.data_implantacao, m.observacoes,
+                       a.id AS animal_id, a.nome AS animal,
+                       e.nome AS especie, r.nome AS raca,
+                       a.sexo, a.cor, a.peso_atual
                 FROM microchips m
-                JOIN animais a
-                    ON m.animal_id = a.id
-                JOIN especies e
-                    ON a.especie_id = e.id
-                LEFT JOIN racas r
-                    ON a.raca_id = r.id
+                JOIN animais a ON m.animal_id = a.id
+                JOIN especies e ON a.especie_id = e.id
+                LEFT JOIN racas r ON a.raca_id = r.id
                 WHERE m.codigo = :codigo
-                  AND m.ativo = TRUE
-                  AND a.ativo = TRUE
+                  AND m.ativo = TRUE AND a.ativo = TRUE
             """),
             {"codigo": codigo}
         )
-
         microchip = resultado.mappings().first()
 
     if microchip is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Microchip não encontrado ou inativo"
-        )
-
+        raise HTTPException(status_code=404, detail="Microchip não encontrado ou inativo")
     return dict(microchip)
+
 
 #Modelo para cadastrar consultas veterinarias
 class ConsultaCadastro(BaseModel):
@@ -392,7 +368,7 @@ def cadastrar_consulta(consulta: ConsultaCadastro):
                         motivo,
                         observacoes
                     )
-                VALUES
+                     VALUES
                     (
                         :animal_id,
                         :veterinario_id,
