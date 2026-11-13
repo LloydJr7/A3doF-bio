@@ -3,6 +3,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from database import engine
+from fastapi.middleware.cors import CORSMiddleware
 
 
 app = FastAPI(
@@ -11,8 +12,15 @@ app = FastAPI(
     version="1.0.0"
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["null"],
+    allow_credentials=False,
+    allow_methods=["GET"],
+    allow_headers=["*"],
+)
 
-# Rota inicial
+#rota inicial
 @app.get("/")
 def inicio():
     return {
