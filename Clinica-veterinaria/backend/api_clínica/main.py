@@ -20,6 +20,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+#permitir comunicação entre o frontend e o backend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 #rota inicial
 @app.get("/")
 def inicio():
