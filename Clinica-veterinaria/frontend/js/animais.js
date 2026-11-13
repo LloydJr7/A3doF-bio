@@ -75,17 +75,29 @@ const botaoEditar = document.createElement("button");
 botaoEditar.textContent = "Editar";
 
 botaoEditar.addEventListener("click", async () => {
-    const novaCor = prompt(
-        `Digite a nova cor de ${animal.nome}:`,
-        animal.cor ?? ""
-    );
+    const novoNome = prompt("Novo nome do animal:", animal.nome);
+    if (novoNome === null) return;
 
-    if (novaCor === null) {
-        return;
-    }
+    const novoSexo = prompt("Novo sexo (Macho ou Femea):", animal.sexo ?? "");
+    if (novoSexo === null) return;
 
-    if (!novaCor.trim()) {
-        alert("A cor não pode ficar vazia.");
+    const novaCor = prompt("Nova cor do animal:", animal.cor ?? "");
+    if (novaCor === null) return;
+
+    const novoPeso = prompt("Novo peso do animal (kg):", animal.peso_atual ?? "");
+    if (novoPeso === null) return;
+
+    const peso = Number(novoPeso.replace(",", "."));
+
+    if (
+        !novoNome.trim() ||
+        !["Macho", "Femea"].includes(novoSexo.trim()) ||
+        !novaCor.trim() ||
+        !novoPeso.trim() ||
+        !Number.isFinite(peso) ||
+        peso <= 0
+    ) {
+        alert("Preencha os dados corretamente. O peso deve ser maior que zero.");
         return;
     }
 
@@ -96,8 +108,11 @@ botaoEditar.addEventListener("click", async () => {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                cor: novaCor.trim()
-            })
+    nome: novoNome.trim(),
+    sexo: novoSexo.trim(),
+    cor: novaCor.trim(),
+    peso_atual: peso
+})
         });
 
         if (!resposta.ok) {
