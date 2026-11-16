@@ -1,8 +1,12 @@
 from fastapi import FastAPI, HTTPException
 import httpx
 from conexao import get_connection
+from passlib.context import CryptContext
+
 
 app = FastAPI(title="API Clínica Veterinária - Teste")
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 
 @app.get("/")
 def home():
@@ -130,3 +134,104 @@ def cadastrar_tutor(tutor: TutorCreate):
         conn.rollback()
         conn.close()
         raise HTTPException(status_code=500, detail=f"Erro ao cadastrar tutor: {str(e)}")
+
+class VeterinarioCreate(BaseModel):
+    nome_completo: str
+    cpf: str
+    crmv: str
+    uf_crmv: str
+    email: str
+    telefone: str
+    senha: str
+
+class LoginRequest(BaseModel):
+    email: str
+    senha: str
+
+@app.post("/veterinarios")
+def cadastrar_veterinario(vet: VeterinarioCreate):
+    cpf_limpo = vet.cpf.replace(".", "").replace("-", "").replace(" ", "")
+    senha_criptografada = pwd_context.hash(vet.senha)
+
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Erro de conexão com o banco de dados.")
+
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT id FROM veterinario WHERE cpf = %s OR email = %s", (cpf_limpo, vet.email))
+        if cursor.fetchone():
+            conn.close()
+            raise HTTPException(status_code=400, detail="CPF ou E-mail já cadastrado.")
+
+        query = """
+            INSERT INTO veterinario (nome_completo, cpf, crmv, uf_crmv, email, telefone, senha_hash, senha_confirmada)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE)
+            RETURNING id;
+        """
+        cursor.execute(query, (
+            vet.nome_completo,
+            cpf_limpo,
+            vet.crmv,
+            vet.uf_crmv.upper(),
+            vet.email,
+            vet.telefone,
+            senha_criptografada
+        ))
+        novo_id = cursor.fetchone()["id"]
+        conn.commit()
+        conn.close()
+
+        return {
+            "mensagem": "Veterinário cadastrado com sucesso!",
+            "veterinario_id": novo_id
+        }
+    except HTTPException as http_ex:
+        conn.close()
+        raise http_ex
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        raise HTTPException(status_code=500, detail=f"Erro ao cadastrar veterinário: {str(e)}")
+
+@app.post("/login")
+def login_veterinario(dados: LoginRequest):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Erro de conexão com o banco de dados.")
+
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "SELECT id, nome_completo, crmv, uf_crmv, senha_hash, situacao FROM veterinario WHERE email = %s",
+            (dados.email,)
+        )
+        vet = cursor.fetchone()
+
+        if not vet or not pwd_context.verify(dados.senha, vet["senha_hash"]):
+            conn.close()
+            raise HTTPException(status_code=401, detail="E-mail ou senha incorretos.")
+
+        if vet["situacao"] != "ATIVO":
+            conn.close()
+            raise HTTPException(status_code=403, detail="Conta de veterinário inativa.")
+
+        cursor.execute("UPDATE veterinario SET ultimo_acesso = CURRENT_TIMESTAMP WHERE id = %s", (vet["id"],))
+        conn.commit()
+        conn.close()
+
+        return {
+            "mensagem": "Login realizado com sucesso!",
+            "veterinario": {
+                "id": vet["id"],
+                "nome_completo": vet["nome_completo"],
+                "crmv": f"{vet['crmv']}-{vet['uf_crmv']}"
+            }
+        }
+    except HTTPException as http_ex:
+        conn.close()
+        raise http_ex
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        raise HTTPException(status_code=500, detail=f"Erro ao realizar login: {str(e)}")
