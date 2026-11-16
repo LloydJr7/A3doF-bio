@@ -166,7 +166,7 @@ def cadastrar_veterinario(vet: VeterinarioCreate):
 
         query = """
             INSERT INTO veterinario (nome_completo, cpf, crmv, uf_crmv, email, telefone, senha_hash, senha_confirmada)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, FALSE)
             RETURNING id;
         """
         cursor.execute(query, (
@@ -183,7 +183,7 @@ def cadastrar_veterinario(vet: VeterinarioCreate):
         conn.close()
 
         return {
-            "mensagem": "Veterinário cadastrado com sucesso!",
+            "mensagem": "Veterinário cadastrado! Confirme a senha para liberar o acesso.",
             "veterinario_id": novo_id
         }
     except HTTPException as http_ex:
@@ -194,6 +194,35 @@ def cadastrar_veterinario(vet: VeterinarioCreate):
         conn.close()
         raise HTTPException(status_code=500, detail=f"Erro ao cadastrar veterinário: {str(e)}")
 
+@app.patch("/veterinarios/{veterinario_id}/confirmar-senha")
+def confirmar_senha_veterinario(veterinario_id: int):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Erro de conexão com o banco de dados.")
+
+    cursor = conn.cursor()
+    try:
+        query = """
+            UPDATE veterinario 
+            SET senha_confirmada = TRUE, data_confirmacao = CURRENT_TIMESTAMP 
+            WHERE id = %s 
+            RETURNING id;
+        """
+        cursor.execute(query, (veterinario_id,))
+        if not cursor.fetchone():
+            conn.close()
+            raise HTTPException(status_code=404, detail="Veterinário não encontrado.")
+        conn.commit()
+        conn.close()
+        return {"mensagem": "Senha confirmada com sucesso! Acesso liberado."}
+    except HTTPException as http_ex:
+        conn.close()
+        raise http_ex
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        raise HTTPException(status_code=500, detail=f"Erro ao confirmar senha: {str(e)}")
+
 @app.post("/login")
 def login_veterinario(dados: LoginRequest):
     conn = get_connection()
@@ -203,7 +232,7 @@ def login_veterinario(dados: LoginRequest):
     cursor = conn.cursor()
     try:
         cursor.execute(
-            "SELECT id, nome_completo, crmv, uf_crmv, senha_hash, situacao FROM veterinario WHERE email = %s",
+            "SELECT id, nome_completo, crmv, uf_crmv, senha_hash, senha_confirmada, situacao FROM veterinario WHERE email = %s",
             (dados.email,)
         )
         vet = cursor.fetchone()
@@ -215,6 +244,10 @@ def login_veterinario(dados: LoginRequest):
         if vet["situacao"] != "ATIVO":
             conn.close()
             raise HTTPException(status_code=403, detail="Conta de veterinário inativa.")
+
+        if not vet["senha_confirmada"]:
+            conn.close()
+            raise HTTPException(status_code=403, detail="Acesso bloqueado. Confirme sua senha antes de entrar.")
 
         cursor.execute("UPDATE veterinario SET ultimo_acesso = CURRENT_TIMESTAMP WHERE id = %s", (vet["id"],))
         conn.commit()
@@ -235,3 +268,100 @@ def login_veterinario(dados: LoginRequest):
         conn.rollback()
         conn.close()
         raise HTTPException(status_code=500, detail=f"Erro ao realizar login: {str(e)}")
+
+class TutorUpdate(BaseModel):
+    nome_completo: str
+    data_nascimento: str
+    email: str
+    telefone: str
+    endereco_id: int
+
+@app.get("/tutores")
+def listar_tutores():
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Erro de conexão com o banco de dados.")
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM tutor ORDER BY id;")
+        tutores = cursor.fetchall()
+        conn.close()
+        return tutores
+    except Exception as e:
+        conn.close()
+        raise HTTPException(status_code=500, detail=f"Erro ao listar tutores: {str(e)}")
+
+@app.get("/tutores/{tutor_id}")
+def buscar_tutor(tutor_id: int):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Erro de conexão com o banco de dados.")
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM tutor WHERE id = %s;", (tutor_id,))
+        tutor = cursor.fetchone()
+        conn.close()
+        if not tutor:
+            raise HTTPException(status_code=404, detail="Tutor não encontrado.")
+        return tutor
+    except HTTPException as http_ex:
+        raise http_ex
+    except Exception as e:
+        conn.close()
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar tutor: {str(e)}")
+
+@app.put("/tutores/{tutor_id}")
+def atualizar_tutor(tutor_id: int, dados: TutorUpdate):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Erro de conexão com o banco de dados.")
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT id FROM tutor WHERE id = %s;", (tutor_id,))
+        if not cursor.fetchone():
+            conn.close()
+            raise HTTPException(status_code=404, detail="Tutor não encontrado.")
+
+        query = """
+            UPDATE tutor 
+            SET nome_completo = %s, data_nascimento = %s, email = %s, telefone = %s, endereco_id = %s
+            WHERE id = %s;
+        """
+        cursor.execute(query, (
+            dados.nome_completo,
+            dados.data_nascimento,
+            dados.email,
+            dados.telefone,
+            dados.endereco_id,
+            tutor_id
+        ))
+        conn.commit()
+        conn.close()
+        return {"mensagem": "Dados do tutor atualizados com sucesso!"}
+    except HTTPException as http_ex:
+        raise http_ex
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        raise HTTPException(status_code=500, detail=f"Erro ao atualizar tutor: {str(e)}")
+
+@app.patch("/tutores/{tutor_id}/inativar")
+def inativar_tutor(tutor_id: int):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Erro de conexão com o banco de dados.")
+    cursor = conn.cursor()
+    try:
+        cursor.execute("UPDATE tutor SET situacao = 'INATIVO' WHERE id = %s RETURNING id;", (tutor_id,))
+        if not cursor.fetchone():
+            conn.close()
+            raise HTTPException(status_code=404, detail="Tutor não encontrado.")
+        conn.commit()
+        conn.close()
+        return {"mensagem": "Tutor inativado com sucesso!"}
+    except HTTPException as http_ex:
+        raise http_ex
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        raise HTTPException(status_code=500, detail=f"Erro ao inativar tutor: {str(e)}")
