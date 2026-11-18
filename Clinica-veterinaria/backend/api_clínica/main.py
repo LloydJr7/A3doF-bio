@@ -21,7 +21,6 @@ app.add_middleware(
 )
 
 
-#permitir comunicação entre o frontend e o backend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -31,7 +30,6 @@ app.add_middleware(
 )
 
 
-#rota inicial
 @app.get("/")
 def inicio():
     return {
@@ -154,7 +152,6 @@ def buscar_animal(animal_id: int):
     return dict(animal)
 
 
-# modelo para atualizar os dados de um animal
 class AnimalAtualizacao(BaseModel):
     nome: str | None = Field(default=None, min_length=1, max_length=100)
     sexo: str | None = None
@@ -162,7 +159,6 @@ class AnimalAtualizacao(BaseModel):
     peso_atual: float | None = Field(default=None, gt=0)
 
 
-# atualizar os dados de um animal
 @app.put("/animais/{animal_id}")
 def atualizar_animal(animal_id: int, animal: AnimalAtualizacao):
     dados = animal.model_dump(exclude_unset=True)
@@ -207,7 +203,6 @@ def atualizar_animal(animal_id: int, animal: AnimalAtualizacao):
     }
 
 
-#desativar um animal sem apagar seu cadastro
 @app.delete("/animais/{animal_id}")
 def desativar_animal(animal_id: int):
     with engine.begin() as conexao:
@@ -236,7 +231,6 @@ def desativar_animal(animal_id: int):
     }
 
 
-# Modelo para cadastrar microchips
 class MicrochipCadastro(BaseModel):
     animal_id: int = Field(gt=0)
     codigo: str = Field(min_length=1, max_length=50)
@@ -244,7 +238,6 @@ class MicrochipCadastro(BaseModel):
     observacoes: str | None = None
 
 
-# Cadastrar microchip em um animal
 @app.post("/microchips", status_code=201)
 def cadastrar_microchip(microchip: MicrochipCadastro):
     with engine.begin() as conexao:
@@ -301,7 +294,6 @@ def cadastrar_microchip(microchip: MicrochipCadastro):
     }
 
 
-# Listar todos os microchips cadastrados
 @app.get("/microchips")
 def listar_microchips():
     with engine.connect() as conexao:
@@ -318,7 +310,6 @@ def listar_microchips():
     return [dict(microchip) for microchip in microchips]
 
 
-# Buscar microchip pelo codigo
 @app.get("/microchips/codigo/{codigo}")
 def buscar_microchip_por_codigo(codigo: str):
     with engine.connect() as conexao:
@@ -345,7 +336,6 @@ def buscar_microchip_por_codigo(codigo: str):
     return dict(microchip)
 
 
-#Modelo para cadastrar consultas veterinarias
 class ConsultaCadastro(BaseModel):
     animal_id: int = Field(gt=0)
     veterinario_id: int | None = Field(default=None, gt=0)
@@ -354,12 +344,11 @@ class ConsultaCadastro(BaseModel):
     observacoes: str | None = None
 
 
-# Cadastrar uma consulta veterinaria
 @app.post("/consultas", status_code=201)
 def cadastrar_consulta(consulta: ConsultaCadastro):
     with engine.begin() as conexao:
 
-        # verificar se o animal existe e esta ativo
+       
         animal = conexao.execute(
             text("""
                 SELECT id
@@ -376,7 +365,7 @@ def cadastrar_consulta(consulta: ConsultaCadastro):
                 detail="Animal não encontrado ou desativado"
             )
 
-        #cadastrar a consulta no banco
+        
         resultado = conexao.execute(
             text("""
                 INSERT INTO consultas
@@ -407,7 +396,6 @@ def cadastrar_consulta(consulta: ConsultaCadastro):
         "id": consulta_id
     }
 
-#lista todas as consultas veterinaria
 @app.get("/consultas")
 def listar_consultas():
     with engine.connect() as conexao:
@@ -433,7 +421,6 @@ def listar_consultas():
 
     return [dict(consulta) for consulta in consultas]
 
-# Buscar uma consulta pelo ID
 @app.get("/consultas/{consulta_id}")
 def buscar_consulta(consulta_id: int):
     with engine.connect() as conexao:
@@ -467,7 +454,6 @@ def buscar_consulta(consulta_id: int):
 
     return dict(consulta)
 
-# modelo para atualizar consultas
 class ConsultaAtualizacao(BaseModel):
     data_hora: datetime | None = None
     motivo: str | None = None
@@ -475,7 +461,6 @@ class ConsultaAtualizacao(BaseModel):
     observacoes: str | None = None
 
 
-#    atualizar uma consulta
 @app.put("/consultas/{consulta_id}")
 def atualizar_consulta(consulta_id: int, consulta: ConsultaAtualizacao):
     dados = consulta.model_dump(exclude_unset=True)
@@ -532,7 +517,6 @@ def atualizar_consulta(consulta_id: int, consulta: ConsultaAtualizacao):
     }
 
 
-#cancelar uma consulta sem apagar o registro
 @app.delete("/consultas/{consulta_id}")
 def cancelar_consulta(consulta_id: int):
     with engine.begin() as conexao:
