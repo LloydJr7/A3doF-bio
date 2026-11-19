@@ -22,3 +22,4 @@ def get_connection():
         print(f"Erro ao conectar ao banco de dados: {e}")
         return None
 
+
