@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from passlib.context import CryptContext
 from sqlalchemy import text
 import httpx
-from conexao import get_connection
+from database import get_connection
 from database import engine
 
 app = FastAPI(
