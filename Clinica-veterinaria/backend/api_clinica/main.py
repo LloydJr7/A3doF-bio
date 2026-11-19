@@ -1,5 +1,6 @@
+import secrets
 from datetime import date, datetime
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from passlib.context import CryptContext
@@ -24,6 +25,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+sessoes_ativas: dict[str, int] = {}
+
+
+def verificar_autenticacao(authorization: str = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Acesso negado. Faça login para continuar.")
+    token = authorization.replace("Bearer ", "").strip()
+    if token not in sessoes_ativas:
+        raise HTTPException(status_code=401, detail="Sessão inválida ou expirada. Faça login novamente.")
+    return sessoes_ativas[token]
+
 
 @app.get("/")
 def home():
@@ -39,7 +51,7 @@ def teste_banco():
     return {"error": "Não foi possível conectar ao banco de dados."}
 
 
-@app.get("/cep/{cep}")
+@app.get("/cep/{cep}", dependencies=[Depends(verificar_autenticacao)])
 def buscar_e_salvar_cep(cep: str):
     cep_limpo = cep.replace("-", "").replace(" ", "")
 
@@ -47,7 +59,10 @@ def buscar_e_salvar_cep(cep: str):
         raise HTTPException(status_code=400, detail="CEP inválido. Por favor, informe 8 dígitos.")
 
     url_viacep = f"https://viacep.com.br/ws/{cep_limpo}/json/"
-    response = httpx.get(url_viacep)
+    try:
+        response = httpx.get(url_viacep, timeout=8.0)
+    except httpx.RequestError:
+        raise HTTPException(status_code=503, detail="Serviço ViaCEP indisponível no momento.")
 
     if response.status_code != 200 or "erro" in response.json():
         raise HTTPException(status_code=404, detail="CEP não encontrado no ViaCEP.")
@@ -100,6 +115,72 @@ def buscar_e_salvar_cep(cep: str):
         raise HTTPException(status_code=500, detail=f"Erro ao salvar endereço no banco: {str(e)}")
 
 
+class EnderecoUpdate(BaseModel):
+    logradouro: str = ""
+    bairro: str = ""
+    cidade: str = ""
+    uf: str = ""
+
+
+@app.get("/enderecos/{endereco_id}", dependencies=[Depends(verificar_autenticacao)])
+def buscar_endereco(endereco_id: int):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Erro de conexão com o banco de dados.")
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "SELECT id, logradouro, numero, bairro, cidade, uf, cep FROM endereco WHERE id = %s;",
+            (endereco_id,)
+        )
+        endereco = cursor.fetchone()
+        conn.close()
+        if not endereco:
+            raise HTTPException(status_code=404, detail="Endereço não encontrado.")
+        return endereco
+    except HTTPException as http_ex:
+        raise http_ex
+    except Exception as e:
+        conn.close()
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar endereço: {str(e)}")
+
+
+@app.put("/enderecos/{endereco_id}", dependencies=[Depends(verificar_autenticacao)])
+def atualizar_endereco(endereco_id: int, dados: EnderecoUpdate):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Erro de conexão com o banco de dados.")
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            """
+            UPDATE endereco
+            SET logradouro = %s, bairro = %s, cidade = %s, uf = %s
+            WHERE id = %s
+            RETURNING id;
+            """,
+            (
+                dados.logradouro.strip(),
+                dados.bairro.strip(),
+                dados.cidade.strip(),
+                dados.uf.strip().upper(),
+                endereco_id
+            )
+        )
+        if not cursor.fetchone():
+            conn.close()
+            raise HTTPException(status_code=404, detail="Endereço não encontrado.")
+        conn.commit()
+        conn.close()
+        return {"mensagem": "Endereço atualizado com sucesso!"}
+    except HTTPException as http_ex:
+        raise http_ex
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        raise HTTPException(status_code=500, detail=f"Erro ao atualizar endereço: {str(e)}")
+
+
 class TutorCreate(BaseModel):
     nome_completo: str
     cpf: str
@@ -117,7 +198,7 @@ class TutorUpdate(BaseModel):
     endereco_id: int
 
 
-@app.post("/tutores")
+@app.post("/tutores", dependencies=[Depends(verificar_autenticacao)])
 def cadastrar_tutor(tutor: TutorCreate):
     cpf_limpo = tutor.cpf.replace(".", "").replace("-", "").replace(" ", "")
 
@@ -162,7 +243,7 @@ def cadastrar_tutor(tutor: TutorCreate):
         raise HTTPException(status_code=500, detail=f"Erro ao cadastrar tutor: {str(e)}")
 
 
-@app.get("/tutores")
+@app.get("/tutores", dependencies=[Depends(verificar_autenticacao)])
 def listar_tutores():
     conn = get_connection()
     if not conn:
@@ -178,7 +259,7 @@ def listar_tutores():
         raise HTTPException(status_code=500, detail=f"Erro ao listar tutores: {str(e)}")
 
 
-@app.get("/tutores/{tutor_id}")
+@app.get("/tutores/{tutor_id}", dependencies=[Depends(verificar_autenticacao)])
 def buscar_tutor(tutor_id: int):
     conn = get_connection()
     if not conn:
@@ -198,7 +279,7 @@ def buscar_tutor(tutor_id: int):
         raise HTTPException(status_code=500, detail=f"Erro ao buscar tutor: {str(e)}")
 
 
-@app.put("/tutores/{tutor_id}")
+@app.put("/tutores/{tutor_id}", dependencies=[Depends(verificar_autenticacao)])
 def atualizar_tutor(tutor_id: int, dados: TutorUpdate):
     conn = get_connection()
     if not conn:
@@ -234,7 +315,7 @@ def atualizar_tutor(tutor_id: int, dados: TutorUpdate):
         raise HTTPException(status_code=500, detail=f"Erro ao atualizar tutor: {str(e)}")
 
 
-@app.patch("/tutores/{tutor_id}/inativar")
+@app.patch("/tutores/{tutor_id}/inativar", dependencies=[Depends(verificar_autenticacao)])
 def inativar_tutor(tutor_id: int):
     conn = get_connection()
     if not conn:
@@ -254,6 +335,71 @@ def inativar_tutor(tutor_id: int):
         conn.rollback()
         conn.close()
         raise HTTPException(status_code=500, detail=f"Erro ao inativar tutor: {str(e)}")
+
+
+@app.patch("/tutores/{tutor_id}/ativar", dependencies=[Depends(verificar_autenticacao)])
+def ativar_tutor(tutor_id: int):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Erro de conexão com o banco de dados.")
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "UPDATE tutor SET situacao = 'ATIVO' WHERE id = %s RETURNING id",
+            (tutor_id,)
+        )
+        tutor_atualizado = cursor.fetchone()
+        if not tutor_atualizado:
+            conn.close()
+            raise HTTPException(status_code=404, detail="Tutor não encontrado.")
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return {"mensagem": "Tutor reativado com sucesso!"}
+    except HTTPException as http_ex:
+        raise http_ex
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        raise HTTPException(status_code=500, detail=f"Erro ao ativar tutor: {str(e)}")
+
+
+@app.delete("/tutores/{tutor_id}", dependencies=[Depends(verificar_autenticacao)])
+def excluir_tutor(tutor_id: int):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Erro de conexão com o banco de dados.")
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT COUNT(*) AS total FROM animais WHERE tutor_id = %s", (tutor_id,))
+        resultado = cursor.fetchone()
+        qtd_animais = resultado["total"] if isinstance(resultado, dict) else resultado[0]
+
+        if qtd_animais > 0:
+            cursor.close()
+            conn.close()
+            raise HTTPException(
+                status_code=400,
+                detail="Não é possível excluir este tutor pois ele possui animais vinculados. Inative-o em vez de excluir."
+            )
+
+        cursor.execute("DELETE FROM tutor WHERE id = %s RETURNING id", (tutor_id,))
+        deletado = cursor.fetchone()
+        if not deletado:
+            cursor.close()
+            conn.close()
+            raise HTTPException(status_code=404, detail="Tutor não encontrado.")
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return {"mensagem": "Tutor excluído com sucesso!"}
+    except HTTPException as http_ex:
+        raise http_ex
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        raise HTTPException(status_code=500, detail=f"Erro ao excluir tutor: {str(e)}")
 
 
 class VeterinarioCreate(BaseModel):
@@ -378,8 +524,12 @@ def login_veterinario(dados: LoginRequest):
         conn.commit()
         conn.close()
 
+        token = secrets.token_hex(32)
+        sessoes_ativas[token] = vet["id"]
+
         return {
             "mensagem": "Login realizado com sucesso!",
+            "token": token,
             "veterinario": {
                 "id": vet["id"],
                 "nome_completo": vet["nome_completo"],
@@ -395,6 +545,14 @@ def login_veterinario(dados: LoginRequest):
         raise HTTPException(status_code=500, detail=f"Erro ao realizar login: {str(e)}")
 
 
+@app.post("/logout")
+def logout_veterinario(authorization: str = Header(None)):
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.replace("Bearer ", "").strip()
+        sessoes_ativas.pop(token, None)
+    return {"mensagem": "Sessão encerrada com sucesso."}
+
+
 class AnimalCadastro(BaseModel):
     nome: str = Field(min_length=1, max_length=100)
     especie_id: int = Field(gt=0)
@@ -405,7 +563,7 @@ class AnimalCadastro(BaseModel):
     peso_atual: float | None = Field(default=None, gt=0)
 
 
-@app.post("/animais", status_code=201)
+@app.post("/animais", status_code=201, dependencies=[Depends(verificar_autenticacao)])
 def cadastrar_animal(animal: AnimalCadastro):
     with engine.begin() as conexao:
         resultado = conexao.execute(
@@ -443,7 +601,7 @@ def cadastrar_animal(animal: AnimalCadastro):
     }
 
 
-@app.get("/animais")
+@app.get("/animais", dependencies=[Depends(verificar_autenticacao)])
 def listar_animais():
     with engine.connect() as conexao:
         resultado = conexao.execute(
@@ -475,7 +633,7 @@ def listar_animais():
     return [dict(animal) for animal in animais]
 
 
-@app.get("/animais/{animal_id}")
+@app.get("/animais/{animal_id}", dependencies=[Depends(verificar_autenticacao)])
 def buscar_animal(animal_id: int):
     with engine.connect() as conexao:
         resultado = conexao.execute(
@@ -517,7 +675,7 @@ class AnimalAtualizacao(BaseModel):
     peso_atual: float | None = Field(default=None, gt=0)
 
 
-@app.put("/animais/{animal_id}")
+@app.put("/animais/{animal_id}", dependencies=[Depends(verificar_autenticacao)])
 def atualizar_animal(animal_id: int, animal: AnimalAtualizacao):
     dados = animal.model_dump(exclude_unset=True)
 
@@ -561,7 +719,7 @@ def atualizar_animal(animal_id: int, animal: AnimalAtualizacao):
     }
 
 
-@app.delete("/animais/{animal_id}")
+@app.delete("/animais/{animal_id}", dependencies=[Depends(verificar_autenticacao)])
 def desativar_animal(animal_id: int):
     with engine.begin() as conexao:
         resultado = conexao.execute(
@@ -596,7 +754,7 @@ class MicrochipCadastro(BaseModel):
     observacoes: str | None = None
 
 
-@app.post("/microchips", status_code=201)
+@app.post("/microchips", status_code=201, dependencies=[Depends(verificar_autenticacao)])
 def cadastrar_microchip(microchip: MicrochipCadastro):
     with engine.begin() as conexao:
         animal = conexao.execute(
@@ -652,7 +810,7 @@ def cadastrar_microchip(microchip: MicrochipCadastro):
     }
 
 
-@app.get("/microchips")
+@app.get("/microchips", dependencies=[Depends(verificar_autenticacao)])
 def listar_microchips():
     with engine.connect() as conexao:
         resultado = conexao.execute(
@@ -668,7 +826,7 @@ def listar_microchips():
     return [dict(microchip) for microchip in microchips]
 
 
-@app.get("/microchips/codigo/{codigo}")
+@app.get("/microchips/codigo/{codigo}", dependencies=[Depends(verificar_autenticacao)])
 def buscar_microchip_por_codigo(codigo: str):
     with engine.connect() as conexao:
         resultado = conexao.execute(
@@ -702,7 +860,7 @@ class ConsultaCadastro(BaseModel):
     observacoes: str | None = None
 
 
-@app.post("/consultas", status_code=201)
+@app.post("/consultas", status_code=201, dependencies=[Depends(verificar_autenticacao)])
 def cadastrar_consulta(consulta: ConsultaCadastro):
     with engine.begin() as conexao:
         animal = conexao.execute(
@@ -752,7 +910,7 @@ def cadastrar_consulta(consulta: ConsultaCadastro):
     }
 
 
-@app.get("/consultas")
+@app.get("/consultas", dependencies=[Depends(verificar_autenticacao)])
 def listar_consultas():
     with engine.connect() as conexao:
         resultado = conexao.execute(
@@ -778,7 +936,7 @@ def listar_consultas():
     return [dict(consulta) for consulta in consultas]
 
 
-@app.get("/consultas/{consulta_id}")
+@app.get("/consultas/{consulta_id}", dependencies=[Depends(verificar_autenticacao)])
 def buscar_consulta(consulta_id: int):
     with engine.connect() as conexao:
         resultado = conexao.execute(
@@ -819,7 +977,7 @@ class ConsultaAtualizacao(BaseModel):
     observacoes: str | None = None
 
 
-@app.put("/consultas/{consulta_id}")
+@app.put("/consultas/{consulta_id}", dependencies=[Depends(verificar_autenticacao)])
 def atualizar_consulta(consulta_id: int, consulta: ConsultaAtualizacao):
     dados = consulta.model_dump(exclude_unset=True)
 
@@ -875,7 +1033,7 @@ def atualizar_consulta(consulta_id: int, consulta: ConsultaAtualizacao):
     }
 
 
-@app.delete("/consultas/{consulta_id}")
+@app.delete("/consultas/{consulta_id}", dependencies=[Depends(verificar_autenticacao)])
 def cancelar_consulta(consulta_id: int):
     with engine.begin() as conexao:
         resultado = conexao.execute(

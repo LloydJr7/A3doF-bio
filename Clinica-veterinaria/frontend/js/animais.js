@@ -1,6 +1,3 @@
-
-
-
 const API_URL = "http://127.0.0.1:8000";
 
 async function carregarAnimais() {
@@ -12,11 +9,7 @@ async function carregarAnimais() {
         }
 
         const animais = await resposta.json();
-
-        console.log("Animais cadastrados:", animais);
-
         const tabela = document.getElementById("lista-animais");
-
         tabela.innerHTML = "";
 
         animais.forEach((animal) => {
@@ -39,109 +32,108 @@ async function carregarAnimais() {
                 linha.appendChild(celula);
             });
 
-            
             const acoes = document.createElement("td");
 
-const botaoDesativar = document.createElement("button");
-botaoDesativar.textContent = "Desativar";
+            const botaoEditar = document.createElement("button");
+            botaoEditar.type = "button";
+            botaoEditar.textContent = "Editar";
+            botaoEditar.className = "btn-editar";
 
-botaoDesativar.addEventListener("click", async () => {
-    const confirmar = confirm(
-        `Deseja realmente desativar o animal ${animal.nome}?`
-    );
+            botaoEditar.addEventListener("click", async () => {
+                const novoNome = prompt("Novo nome do animal:", animal.nome);
+                if (novoNome === null) return;
 
-    if (!confirmar) {
-        return;
-    }
+                const novoSexo = prompt("Novo sexo (Macho ou Femea):", animal.sexo ?? "");
+                if (novoSexo === null) return;
 
-    try {
-        const resposta = await fetch(`${API_URL}/animais/${animal.id}`, {
-            method: "DELETE"
-        });
+                const novaCor = prompt("Nova cor do animal:", animal.cor ?? "");
+                if (novaCor === null) return;
 
-        if (!resposta.ok) {
-            throw new Error("Não foi possível desativar o animal.");
-        }
+                const novoPeso = prompt("Novo peso do animal (kg):", animal.peso_atual ?? "");
+                if (novoPeso === null) return;
 
-        alert("Animal desativado com sucesso!");
-        await carregarAnimais();
+                const peso = Number(novoPeso.replace(",", "."));
 
-    } catch (erro) {
-        console.error("Erro ao desativar animal:", erro);
-        alert("Erro ao desativar o animal.");
-    }
-});
-const botaoEditar = document.createElement("button");
-botaoEditar.textContent = "Editar";
+                if (
+                    !novoNome.trim() ||
+                    !["Macho", "Femea"].includes(novoSexo.trim()) ||
+                    !novaCor.trim() ||
+                    !novoPeso.trim() ||
+                    !Number.isFinite(peso) ||
+                    peso <= 0
+                ) {
+                    alert("Preencha os dados corretamente. O peso deve ser maior que zero.");
+                    return;
+                }
 
-botaoEditar.addEventListener("click", async () => {
-    const novoNome = prompt("Novo nome do animal:", animal.nome);
-    if (novoNome === null) return;
+                try {
+                    const resposta = await fetch(`${API_URL}/animais/${animal.id}`, {
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            nome: novoNome.trim(),
+                            sexo: novoSexo.trim(),
+                            cor: novaCor.trim(),
+                            peso_atual: peso
+                        })
+                    });
 
-    const novoSexo = prompt("Novo sexo (Macho ou Femea):", animal.sexo ?? "");
-    if (novoSexo === null) return;
+                    if (!resposta.ok) {
+                        throw new Error("Não foi possível atualizar o animal.");
+                    }
 
-    const novaCor = prompt("Nova cor do animal:", animal.cor ?? "");
-    if (novaCor === null) return;
+                    alert("Animal atualizado com sucesso!");
+                    await carregarAnimais();
+                } catch (erro) {
+                    console.error("Erro ao editar animal:", erro);
+                    alert("Erro ao atualizar o animal.");
+                }
+            });
 
-    const novoPeso = prompt("Novo peso do animal (kg):", animal.peso_atual ?? "");
-    if (novoPeso === null) return;
+            const botaoExcluir = document.createElement("button");
+            botaoExcluir.type = "button";
+            botaoExcluir.textContent = "Excluir";
+            botaoExcluir.className = "btn-excluir";
 
-    const peso = Number(novoPeso.replace(",", "."));
+            botaoExcluir.addEventListener("click", async () => {
+                const confirmar = confirm(
+                    `Deseja realmente excluir o animal ${animal.nome}?`
+                );
 
-    if (
-        !novoNome.trim() ||
-        !["Macho", "Femea"].includes(novoSexo.trim()) ||
-        !novaCor.trim() ||
-        !novoPeso.trim() ||
-        !Number.isFinite(peso) ||
-        peso <= 0
-    ) {
-        alert("Preencha os dados corretamente. O peso deve ser maior que zero.");
-        return;
-    }
+                if (!confirmar) {
+                    return;
+                }
 
-    try {
-        const resposta = await fetch(`${API_URL}/animais/${animal.id}`, {
-            method: "PUT",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-    nome: novoNome.trim(),
-    sexo: novoSexo.trim(),
-    cor: novaCor.trim(),
-    peso_atual: peso
-})
-        });
+                try {
+                    const resposta = await fetch(`${API_URL}/animais/${animal.id}`, {
+                        method: "DELETE"
+                    });
 
-        if (!resposta.ok) {
-            throw new Error("Não foi possível atualizar o animal.");
-        }
+                    if (!resposta.ok) {
+                        throw new Error("Não foi possível excluir o animal.");
+                    }
 
-        alert("Animal atualizado com sucesso!");
-        await carregarAnimais();
+                    alert("Animal excluído com sucesso!");
+                    await carregarAnimais();
+                } catch (erro) {
+                    console.error("Erro ao excluir animal:", erro);
+                    alert("Erro ao excluir o animal.");
+                }
+            });
 
-    } catch (erro) {
-        console.error("Erro ao editar animal:", erro);
-        alert("Erro ao atualizar o animal.");
-    }
-});
-
-acoes.appendChild(botaoEditar);
-acoes.appendChild(botaoDesativar);
-linha.appendChild(acoes);
-
+            acoes.appendChild(botaoEditar);
+            acoes.appendChild(botaoExcluir);
+            linha.appendChild(acoes);
             tabela.appendChild(linha);
         });
-
     } catch (erro) {
         console.error("Erro ao carregar animais:", erro);
     }
 }
 
 document.addEventListener("DOMContentLoaded", carregarAnimais);
-
 
 async function cadastrarAnimal(evento) {
     evento.preventDefault();
@@ -175,17 +167,13 @@ async function cadastrarAnimal(evento) {
 
         if (!resposta.ok) {
             const erro = await resposta.json();
-            throw new Error(JSON.stringify(erro));
+            throw new Error(JSON.stringify(erro.detail || erro));
         }
 
         const resultado = await resposta.json();
-
         alert(`Animal cadastrado com sucesso! ID: ${resultado.id}`);
-
         document.getElementById("form-animal").reset();
-
         await carregarAnimais();
-
     } catch (erro) {
         console.error("Erro ao cadastrar animal:", erro);
         alert("Não foi possível cadastrar o animal. Verifique os dados.");
@@ -193,7 +181,6 @@ async function cadastrarAnimal(evento) {
 }
 
 document.getElementById("form-animal").addEventListener("submit", cadastrarAnimal);
-
 
 const racasPorEspecie = {
     1: [
@@ -215,69 +202,14 @@ const campoRaca = document.getElementById("raca");
 
 campoEspecie.addEventListener("change", () => {
     const especieId = campoEspecie.value;
-
-    campoRaca.innerHTML =
-        '<option value="">Selecione uma raça</option>';
+    campoRaca.innerHTML = '<option value="">Selecione uma raça</option>';
 
     const racas = racasPorEspecie[especieId] || [];
 
     racas.forEach((raca) => {
         const opcao = document.createElement("option");
-
         opcao.value = raca.id;
         opcao.textContent = raca.nome;
-
         campoRaca.appendChild(opcao);
     });
 });
-
-
-const formularioAnimal = document.getElementById("form-animal");
-
-formularioAnimal.addEventListener("submit", async (evento) => {
-    evento.preventDefault();
-
-    const animal = {
-        nome: document.getElementById("nome").value.trim(),
-        especie_id: Number(document.getElementById("especie").value),
-        raca_id: Number(document.getElementById("raca").value),
-        tutor_id: document.getElementById("tutor").value
-            ? Number(document.getElementById("tutor").value)
-            : null,
-        sexo: document.getElementById("sexo").value || null,
-        cor: document.getElementById("cor").value.trim() || null,
-        peso_atual: document.getElementById("peso").value
-            ? Number(document.getElementById("peso").value)
-            : null
-    };
-
-    try {
-        const resposta = await fetch(`${API_URL}/animais`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(animal)
-        });
-
-        if (!resposta.ok) {
-            const erro = await resposta.json();
-            throw new Error(JSON.stringify(erro.detail || erro));
-        }
-
-        const resultado = await resposta.json();
-
-        alert("Animal cadastrado com sucesso!");
-
-        console.log("Resultado do cadastro:", resultado);
-
-        formularioAnimal.reset();
-
-        await carregarAnimais();
-
-    } catch (erro) {
-        console.error("Erro ao cadastrar animal:", erro);
-        alert("Erro ao cadastrar animal. Verifique o console.");
-    }
-});
-

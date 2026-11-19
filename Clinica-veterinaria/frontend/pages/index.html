@@ -1,86 +1,100 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Dashboard - Clínica Veterinária</title>
-
+    <title>Clínica Veterinária - Painel Inicial</title>
     <link rel="stylesheet" href="../css/dashboard.css">
+    <script src="../js/auth.js"></script>
 </head>
 <body>
 
     <header>
-        <h1>Sistema de Clínica Veterinária</h1>
-        <p>Gerenciamento de Animais, Microchips e Consultas</p>
+        <h1>🐾 Clínica Veterinária</h1>
+        <p>Sistema Integrado de Gestão Clínica</p>
     </header>
 
     <nav>
         <a href="index.html">Início</a>
+        <a href="tutores.html">Tutores</a>
         <a href="animais.html">Animais</a>
         <a href="microchips.html">Microchips</a>
         <a href="consultas.html">Consultas</a>
+        <a href="#" onclick="fazerLogout(); return false;" class="btn-sair">Sair</a>
     </nav>
 
     <main>
         <h2>Painel de Controle</h2>
         <p>Selecione um módulo para começar.</p>
 
-<div class="estatisticas">
-
-    <div class="estatistica">
-        <h3>Animais Cadastrados</h3>
-        <p id="total-animais">--</p>
-    </div>
-
-    <div class="estatistica">
-        <h3>Microchips Registrados</h3>
-        <p id="total-microchips">--</p>
-    </div>
-
-    <div class="estatistica">
-        <h3>Consultas Cadastradas</h3>
-        <p id="total-consultas">--</p>
-    </div>
-
-</div>
-
+        <div class="estatisticas">
+            <div class="estatistica">
+                <h3>Animais Cadastrados</h3>
+                <p id="total-animais">0</p>
+            </div>
+            <div class="estatistica">
+                <h3>Microchips Registrados</h3>
+                <p id="total-microchips">0</p>
+            </div>
+            <div class="estatistica">
+                <h3>Consultas Cadastradas</h3>
+                <p id="total-consultas">0</p>
+            </div>
+        </div>
 
         <div class="cards">
+            <div class="card">
+                <h3>Tutores</h3>
+                <p>Cadastre e consulte tutores com busca automática de CEP.</p>
+                <a href="tutores.html" class="botao">Gerenciar Tutores</a>
+            </div>
 
-            <section class="card">
+            <div class="card">
                 <h3>Animais</h3>
                 <p>Cadastre, consulte e gerencie os animais da clínica.</p>
-                <a href="animais.html" class="botao">
-                    Gerenciar Animais
-                </a>
-            </section>
+                <a href="animais.html" class="botao">Gerenciar Animais</a>
+            </div>
 
-            <section class="card">
+            <div class="card">
                 <h3>Microchips</h3>
                 <p>Registre e consulte os microchips dos animais.</p>
-                <a href="microchips.html" class="botao">
-                    Gerenciar Microchips
-                </a>
-            </section>
+                <a href="microchips.html" class="botao">Gerenciar Microchips</a>
+            </div>
 
-            <section class="card">
+            <div class="card">
                 <h3>Consultas</h3>
                 <p>Agende, edite e acompanhe consultas veterinárias.</p>
-                <a href="consultas.html" class="botao">
-                    Gerenciar Consultas
-                </a>
-            </section>
-
+                <a href="consultas.html" class="botao">Gerenciar Consultas</a>
+            </div>
         </div>
     </main>
 
     <footer>
-        <p>Sistema de Clínica Veterinária</p>
+        Sistema de Clínica Veterinária © 2026
     </footer>
 
-    <script src="../js/dashboard.js"></script>
+    <script>
+        const API_URL = "http://127.0.0.1:8000";
 
+        async function carregarEstatisticas() {
+            try {
+                const [resAnimais, resMicrochips, resConsultas] = await Promise.all([
+                    fetch(`${API_URL}/animais`),
+                    fetch(`${API_URL}/microchips`),
+                    fetch(`${API_URL}/consultas`)
+                ]);
+
+                document.getElementById("total-animais").textContent = resAnimais.ok ? (await resAnimais.json()).length : "Erro";
+                document.getElementById("total-microchips").textContent = resMicrochips.ok ? (await resMicrochips.json()).length : "Erro";
+                document.getElementById("total-consultas").textContent = resConsultas.ok ? (await resConsultas.json()).length : "Erro";
+            } catch (erro) {
+                document.getElementById("total-animais").textContent = "Erro";
+                document.getElementById("total-microchips").textContent = "Erro";
+                document.getElementById("total-consultas").textContent = "Erro";
+            }
+        }
+
+        carregarEstatisticas();
+    </script>
 </body>
 </html>

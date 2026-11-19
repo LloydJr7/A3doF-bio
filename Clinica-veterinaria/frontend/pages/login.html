@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acesso Veterinário - Clínica Veterinária</title>
+    <link rel="stylesheet" href="../css/login.css">
+    <script src="../js/login.js" defer></script>
+</head>
+<body>
+
+    <header>
+        <h1>🐾Clínica Veterinária</h1>
+        <p>Autenticação e Cadastro de Veterinários</p>
+    </header>
+
+    <main>
+        <div id="mensagem-alerta" class="alerta" style="display: none;"></div>
+
+        <section>
+            <h2>Entrar no Sistema</h2>
+            <form id="form-login">
+                <label for="login-email">E-mail:</label>
+                <input type="email" id="login-email" required>
+
+                <label for="login-senha">Senha:</label>
+                <input type="password" id="login-senha" required>
+
+                <button type="submit">Entrar</button>
+            </form>
+        </section>
+
+        <section>
+            <h2>Cadastrar Novo Veterinário</h2>
+            <form id="form-cadastro-vet">
+                <label for="vet-nome">Nome Completo:</label>
+                <input type="text" id="vet-nome" required>
+
+                <label for="vet-cpf">CPF:</label>
+                <input type="text" id="vet-cpf" placeholder="000.000.000-00" required>
+
+                <div class="linha-dupla">
+                    <div>
+                        <label for="vet-crmv">CRMV:</label>
+                        <input type="text" id="vet-crmv" required>
+                    </div>
+                    <div>
+                        <label for="vet-uf">UF CRMV:</label>
+                        <input type="text" id="vet-uf" maxlength="2" placeholder="RJ" required>
+                    </div>
+                </div>
+
+                <label for="vet-email">E-mail:</label>
+                <input type="email" id="vet-email" required>
+
+                <label for="vet-telefone">Telefone:</label>
+                <input type="text" id="vet-telefone" placeholder="(21) 99999-9999" required>
+
+                <label for="vet-senha">Senha:</label>
+                <input type="password" id="vet-senha" required>
+
+                <button type="submit">Cadastrar Veterinário</button>
+            </form>
+
+            <div id="box-confirmacao" class="box-confirmacao" style="display: none;">
+                <p id="texto-confirmacao"></p>
+                <input 
+                    type="text" 
+                    id="codigo-confirmacao" 
+                    maxlength="6" 
+                    inputmode="numeric"
+                    placeholder="000000"
+                    style="text-align: center; letter-spacing: 6px; font-size: 18px; font-weight: bold; margin-bottom: 10px;"
+                >
+                <button type="button" id="btn-confirmar-senha">Validar Código e Confirmar</button>
+            </div>
+        </section>
+    </main>
+
+</body>
+</html>
