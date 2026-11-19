@@ -1,0 +1,171 @@
+
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background-color: #00d9b3;
+    color: #222;
+}
+
+
+header {
+    background-color: #ffffff;
+    text-align: center;
+    padding: 35px 20px;
+}
+
+header h1 {
+    margin: 0 0 12px;
+    font-size: 32px;
+}
+
+header p {
+    margin: 0;
+    color: #555;
+}
+
+nav {
+    background-color: #222;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    padding: 15px;
+}
+
+nav a {
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    padding: 10px 15px;
+    border-radius: 6px;
+}
+
+nav a:hover {
+    background-color: #00d9b3;
+    color: #222;
+}
+
+
+main {
+    max-width: 1200px;
+    margin: 50px auto;
+    padding: 0 20px;
+    text-align: center;
+}
+
+main h2 {
+    font-size: 30px;
+    margin-bottom: 10px;
+}
+
+
+.cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 25px;
+    margin-top: 35px;
+}
+
+.card {
+    background-color: white;
+    padding: 35px 25px;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12);
+    transition: transform 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.card h3 {
+    font-size: 24px;
+    margin-top: 0;
+}
+
+.card p {
+    color: #555;
+    line-height: 1.6;
+    min-height: 75px;
+}
+
+
+.botao {
+    display: inline-block;
+    background-color: #00d9b3;
+    color: #111;
+    padding: 13px 20px;
+    border-radius: 7px;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.botao:hover {
+    background-color: #00bfa0;
+}
+
+
+footer {
+    text-align: center;
+    padding: 20px;
+    background-color: #222;
+    color: white;
+    margin-top: 60px;
+}
+
+
+@media (max-width: 800px) {
+    .cards {
+        grid-template-columns: 1fr;
+    }
+
+    main {
+        margin-top: 30px;
+    }
+
+    header h1 {
+        font-size: 26px;
+    }
+}
+
+
+.estatisticas {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 25px;
+    margin-top: 30px;
+    margin-bottom: 40px;
+}
+
+.estatistica {
+    background-color: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12);
+    text-align: center;
+}
+
+.estatistica h3 {
+    font-size: 18px;
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.estatistica p {
+    font-size: 36px;
+    font-weight: bold;
+    color: #00bfa0;
+    margin: 0;
+}
+
+@media (max-width: 800px) {
+    .estatisticas {
+        grid-template-columns: 1fr;
+    }
+}
+

@@ -1,0 +1,64 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciamento de Microchips</title>
+    <link rel="stylesheet" href="../css/microchips.css">
+</head>
+<body>
+
+<a href="index.html" class="voltar-inicio">
+    ← Voltar ao Início
+</a>
+
+
+    <h1>Gerenciamento de Microchips</h1>
+
+    <section>
+        <h2>Cadastrar Microchip</h2>
+
+        <form id="form-microchip">
+           <label for="animal_id">Selecione o Animal:</label>
+<select id="animal_id" required>
+    <option value="">Selecione um animal...</option>
+</select>
+
+            <label for="codigo">Código do Microchip:</label>
+            <input type="text" id="codigo" maxlength="50" required>
+
+            <label for="data_implantacao">Data de Implantação:</label>
+            <input type="date" id="data_implantacao">
+
+            <label for="observacoes">Observações:</label>
+            <textarea id="observacoes"></textarea>
+
+            <button type="submit">Cadastrar Microchip</button>
+        </form>
+    </section>
+
+    <section>
+        <h2>Microchips Cadastrados</h2>
+
+        <button id="btn-atualizar" type="button">
+            Atualizar Lista
+        </button>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Animal</th>
+                    <th>Código</th>
+                    <th>Data de Implantação</th>
+                    <th>Observações</th>
+                </tr>
+            </thead>
+            <tbody id="lista-microchips"></tbody>
+        </table>
+    </section>
+
+    <script src="../js/microchips.js"></script>
+</body>
+</html>
