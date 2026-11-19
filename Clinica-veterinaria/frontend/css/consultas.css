@@ -112,6 +112,44 @@ tbody tr:hover {
     background-color: #f8fafc;
 }
 
+/* Padronização dos botões de ação na tabela de Consultas */
+td button:first-of-type,
+.btn-editar {
+    background-color: #0284c7 !important;
+    color: #ffffff !important;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    margin-right: 6px;
+    transition: background-color 0.2s ease;
+}
+
+td button:first-of-type:hover,
+.btn-editar:hover {
+    background-color: #0369a1 !important;
+}
+
+td button:last-of-type,
+.btn-cancelar,
+.btn-excluir {
+    background-color: #ef4444 !important;
+    color: #ffffff !important;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.2s ease;
+}
+
+td button:last-of-type:hover,
+.btn-cancelar:hover,
+.btn-excluir:hover {
+    background-color: #dc2626 !important;
+}
+
 .voltar-inicio {
     display: inline-block;
     margin: 0 0 20px;
