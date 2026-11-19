@@ -1,0 +1,74 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Gerenciamento de Consultas</title>
+
+    <link rel="stylesheet" href="../css/consultas.css">
+</head>
+<body>
+
+<a href="index.html" class="voltar-inicio">
+    ← Voltar ao Início
+</a>
+
+
+    <h1>Gerenciamento de Consultas Veterinárias</h1>
+
+    <section>
+        <h2>Agendar Consulta</h2>
+
+        <form id="form-consulta">
+
+            <label for="animal_id">Selecione o Animal:</label>
+            <select id="animal_id" required>
+                <option value="">Selecione um animal...</option>
+            </select>
+
+            <label for="veterinario_id">ID do Veterinário:</label>
+            <input type="number" id="veterinario_id" min="1" required>
+
+            <label for="data_hora">Data e Hora:</label>
+            <input type="datetime-local" id="data_hora" required>
+
+            <label for="motivo">Motivo da Consulta:</label>
+            <textarea id="motivo" required></textarea>
+            <label for="observacoes">Observações:</label>
+            <textarea id="observacoes"></textarea>
+
+            <button type="submit">Agendar Consulta</button>
+
+        </form>
+    </section>
+
+    <section>
+        <h2>Consultas Cadastradas</h2>
+
+        <button id="btn-atualizar" type="button">
+            Atualizar Lista
+        </button>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Animal</th>
+                    <th>Veterinário</th>
+                    <th>Data e Hora</th>
+                    <th>Motivo</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+
+            <tbody id="lista-consultas"></tbody>
+        </table>
+    </section>
+
+    <script src="../js/consultas.js"></script>
+
+</body>
+</html>

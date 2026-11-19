@@ -121,3 +121,21 @@ tr:hover {
         padding: 0 12px;
     }
 }
+
+
+.voltar-inicio {
+    display: inline-block;
+    margin: 20px;
+    padding: 12px 20px;
+    background-color: white;
+    color: #222;
+    text-decoration: none;
+    font-weight: bold;
+    border-radius: 8px;
+    transition: background-color 0.2s;
+}
+
+.voltar-inicio:hover {
+    background-color: #e6e6e6;
+}
+

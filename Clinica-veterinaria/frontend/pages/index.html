@@ -1,0 +1,86 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Dashboard - Clínica Veterinária</title>
+
+    <link rel="stylesheet" href="../css/dashboard.css">
+</head>
+<body>
+
+    <header>
+        <h1>Sistema de Clínica Veterinária</h1>
+        <p>Gerenciamento de Animais, Microchips e Consultas</p>
+    </header>
+
+    <nav>
+        <a href="index.html">Início</a>
+        <a href="animais.html">Animais</a>
+        <a href="microchips.html">Microchips</a>
+        <a href="consultas.html">Consultas</a>
+    </nav>
+
+    <main>
+        <h2>Painel de Controle</h2>
+        <p>Selecione um módulo para começar.</p>
+
+<div class="estatisticas">
+
+    <div class="estatistica">
+        <h3>Animais Cadastrados</h3>
+        <p id="total-animais">--</p>
+    </div>
+
+    <div class="estatistica">
+        <h3>Microchips Registrados</h3>
+        <p id="total-microchips">--</p>
+    </div>
+
+    <div class="estatistica">
+        <h3>Consultas Cadastradas</h3>
+        <p id="total-consultas">--</p>
+    </div>
+
+</div>
+
+
+        <div class="cards">
+
+            <section class="card">
+                <h3>Animais</h3>
+                <p>Cadastre, consulte e gerencie os animais da clínica.</p>
+                <a href="animais.html" class="botao">
+                    Gerenciar Animais
+                </a>
+            </section>
+
+            <section class="card">
+                <h3>Microchips</h3>
+                <p>Registre e consulte os microchips dos animais.</p>
+                <a href="microchips.html" class="botao">
+                    Gerenciar Microchips
+                </a>
+            </section>
+
+            <section class="card">
+                <h3>Consultas</h3>
+                <p>Agende, edite e acompanhe consultas veterinárias.</p>
+                <a href="consultas.html" class="botao">
+                    Gerenciar Consultas
+                </a>
+            </section>
+
+        </div>
+    </main>
+
+    <footer>
+        <p>Sistema de Clínica Veterinária</p>
+    </footer>
+
+    <script src="../js/dashboard.js"></script>
+
+</body>
+</html>
