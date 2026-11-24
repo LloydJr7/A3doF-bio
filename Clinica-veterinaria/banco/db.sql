@@ -1,3 +1,7 @@
+-- Extensão necessária para gerar o hash bcrypt das senhas iniciais
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- 1. Endereços
 CREATE TABLE IF NOT EXISTS public.endereco (
 	id serial4 NOT NULL,
 	cep varchar(9) NOT NULL,
@@ -11,6 +15,7 @@ CREATE TABLE IF NOT EXISTS public.endereco (
 	CONSTRAINT endereco_pkey PRIMARY KEY (id)
 );
 
+-- 2. Veterinários (Usuários do Sistema)
 CREATE TABLE IF NOT EXISTS public.veterinario (
 	id serial4 NOT NULL,
 	nome_completo varchar(150) NOT NULL,
@@ -31,6 +36,7 @@ CREATE TABLE IF NOT EXISTS public.veterinario (
 	CONSTRAINT veterinario_situacao_check CHECK (((situacao)::text = ANY ((ARRAY['ATIVO'::character varying, 'INATIVO'::character varying])::text[])))
 );
 
+-- 3. Tutores
 CREATE TABLE IF NOT EXISTS public.tutor (
 	id serial4 NOT NULL,
 	nome_completo varchar(150) NOT NULL,
@@ -47,6 +53,7 @@ CREATE TABLE IF NOT EXISTS public.tutor (
 	CONSTRAINT tutor_endereco_id_fkey FOREIGN KEY (endereco_id) REFERENCES public.endereco(id) ON DELETE SET NULL
 );
 
+-- 4. Espécies
 CREATE TABLE IF NOT EXISTS public.especies (
 	id serial4 NOT NULL,
 	nome varchar(100) NOT NULL,
@@ -56,6 +63,7 @@ CREATE TABLE IF NOT EXISTS public.especies (
 	CONSTRAINT especies_pkey PRIMARY KEY (id)
 );
 
+-- 5. Raças
 CREATE TABLE IF NOT EXISTS public.racas (
 	id serial4 NOT NULL,
 	nome varchar(100) NOT NULL,
@@ -67,6 +75,7 @@ CREATE TABLE IF NOT EXISTS public.racas (
 	CONSTRAINT fk_raca_especie FOREIGN KEY (especie_id) REFERENCES public.especies(id)
 );
 
+-- 6. Animais
 CREATE TABLE IF NOT EXISTS public.animais (
 	id serial4 NOT NULL,
 	nome varchar(100) NOT NULL,
@@ -88,6 +97,7 @@ CREATE TABLE IF NOT EXISTS public.animais (
 	CONSTRAINT fk_animal_raca FOREIGN KEY (raca_id) REFERENCES public.racas(id)
 );
 
+-- 7. Microchips RFID
 CREATE TABLE IF NOT EXISTS public.microchips (
 	id serial4 NOT NULL,
 	animal_id int4 NOT NULL,
@@ -101,6 +111,7 @@ CREATE TABLE IF NOT EXISTS public.microchips (
 	CONSTRAINT fk_microchip_animal FOREIGN KEY (animal_id) REFERENCES public.animais(id)
 );
 
+-- 8. Consultas
 CREATE TABLE IF NOT EXISTS public.consultas (
 	id serial4 NOT NULL,
 	animal_id int4 NOT NULL,
@@ -115,6 +126,7 @@ CREATE TABLE IF NOT EXISTS public.consultas (
 	CONSTRAINT fk_consulta_animal FOREIGN KEY (animal_id) REFERENCES public.animais(id)
 );
 
+-- 9. Vacinas
 CREATE TABLE IF NOT EXISTS public.vacina (
 	id serial4 NOT NULL,
 	animal_id int4 NOT NULL,
@@ -137,33 +149,5 @@ CREATE TABLE IF NOT EXISTS public.vacina (
 CREATE UNIQUE INDEX IF NOT EXISTS uq_vacina_registro
 	ON public.vacina (animal_id, lower(nome), data_aplicacao, upper(lote), lower(dose));
 
-CREATE TABLE IF NOT EXISTS public.integracao_governo (
-	id serial4 NOT NULL,
-	vacina_id int4 NOT NULL,
-	status varchar(20) DEFAULT 'pendente' NOT NULL,
-	tentativas int4 DEFAULT 0 NOT NULL,
-	protocolo varchar(120) NULL,
-	ultimo_erro text NULL,
-	data_ultima_tentativa timestamp NULL,
-	data_envio timestamp NULL,
-	data_atualizacao timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	CONSTRAINT integracao_governo_pkey PRIMARY KEY (id),
-	CONSTRAINT uq_integracao_governo_vacina UNIQUE (vacina_id),
-	CONSTRAINT fk_integracao_governo_vacina FOREIGN KEY (vacina_id) REFERENCES public.vacina(id),
-	CONSTRAINT ck_integracao_governo_status CHECK (status IN ('pendente', 'enviando', 'erro', 'enviado')),
-	CONSTRAINT ck_integracao_governo_tentativas CHECK (tentativas >= 0)
-);
-
-INSERT INTO public.especies (id, nome, descricao, ativo) VALUES
-(1, 'Cachorro', 'Canino', true),
-(2, 'Gato', 'Felino', true)
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO public.racas (id, nome, descricao, especie_id, ativo) VALUES
-(1, 'SRD (Vira-lata)', 'Sem raça definida', 1, true),
-(2, 'Labrador', 'Labrador Retriever', 1, true),
-(3, 'Poodle', 'Poodle', 1, true),
-(4, 'SRD (Vira-lata)', 'Sem raça definida', 2, true),
-(5, 'Siamês', 'Gato Siamês', 2, true),
-(6, 'Persa', 'Gato Persa', 2, true)
-ON CONFLICT (id) DO NOTHING;
+-- 10. Integração Governamental (Controle de Envio e Resiliência)
+CREATE TABLE IF NOT EXISTS public.
