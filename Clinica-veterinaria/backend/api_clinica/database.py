@@ -1,7 +1,8 @@
-
 import os
 from pathlib import Path
 
+import psycopg
+from psycopg.rows import dict_row
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL
@@ -20,6 +21,22 @@ DATABASE_URL = URL.create(
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
+
+def get_connection():
+    try:
+        return psycopg.connect(
+            host=os.getenv("DB_HOST", "localhost"),
+            port=int(os.getenv("DB_PORT", "5432")),
+            dbname=os.getenv("DB_NAME"),
+            user=os.getenv("DB_USER"),
+            password=os.getenv("DB_PASSWORD"),
+            row_factory=dict_row
+        )
+    except Exception as erro:
+        print("Erro ao conectar ao PostgreSQL:", erro)
+        return None
+
+
 def testar_conexao():
     try:
         with engine.connect() as conexao:
@@ -29,6 +46,7 @@ def testar_conexao():
             print("Conectado ao banco:", resultado.scalar())
     except Exception as erro:
         print("Erro ao conectar:", erro)
+
 
 if __name__ == "__main__":
     testar_conexao()

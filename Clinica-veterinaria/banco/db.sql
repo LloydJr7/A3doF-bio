@@ -115,6 +115,45 @@ CREATE TABLE IF NOT EXISTS public.consultas (
 	CONSTRAINT fk_consulta_animal FOREIGN KEY (animal_id) REFERENCES public.animais(id)
 );
 
+CREATE TABLE IF NOT EXISTS public.vacina (
+	id serial4 NOT NULL,
+	animal_id int4 NOT NULL,
+	veterinario_id int4 NOT NULL,
+	nome varchar(120) NOT NULL,
+	antirrabica bool DEFAULT false NOT NULL,
+	fabricante varchar(120) NULL,
+	lote varchar(80) NOT NULL,
+	dose varchar(40) NOT NULL,
+	data_aplicacao date NOT NULL,
+	data_proxima_dose date NULL,
+	observacoes text NULL,
+	data_cadastro timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	CONSTRAINT vacina_pkey PRIMARY KEY (id),
+	CONSTRAINT fk_vacina_animal FOREIGN KEY (animal_id) REFERENCES public.animais(id),
+	CONSTRAINT fk_vacina_veterinario FOREIGN KEY (veterinario_id) REFERENCES public.veterinario(id),
+	CONSTRAINT ck_vacina_proxima_dose CHECK (data_proxima_dose IS NULL OR data_proxima_dose >= data_aplicacao)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_vacina_registro
+	ON public.vacina (animal_id, lower(nome), data_aplicacao, upper(lote), lower(dose));
+
+CREATE TABLE IF NOT EXISTS public.integracao_governo (
+	id serial4 NOT NULL,
+	vacina_id int4 NOT NULL,
+	status varchar(20) DEFAULT 'pendente' NOT NULL,
+	tentativas int4 DEFAULT 0 NOT NULL,
+	protocolo varchar(120) NULL,
+	ultimo_erro text NULL,
+	data_ultima_tentativa timestamp NULL,
+	data_envio timestamp NULL,
+	data_atualizacao timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	CONSTRAINT integracao_governo_pkey PRIMARY KEY (id),
+	CONSTRAINT uq_integracao_governo_vacina UNIQUE (vacina_id),
+	CONSTRAINT fk_integracao_governo_vacina FOREIGN KEY (vacina_id) REFERENCES public.vacina(id),
+	CONSTRAINT ck_integracao_governo_status CHECK (status IN ('pendente', 'enviando', 'erro', 'enviado')),
+	CONSTRAINT ck_integracao_governo_tentativas CHECK (tentativas >= 0)
+);
+
 INSERT INTO public.especies (id, nome, descricao, ativo) VALUES
 (1, 'Cachorro', 'Canino', true),
 (2, 'Gato', 'Felino', true)

@@ -90,6 +90,34 @@ form button {
     margin-top: 10px;
 }
 
+.acoes-consulta {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.btn-editar {
+    background-color: #0284c7;
+    color: #ffffff;
+    padding: 8px 14px;
+    font-size: 14px;
+}
+
+.btn-editar:hover {
+    background-color: #0369a1;
+}
+
+.btn-cancelar {
+    background-color: #ef4444;
+    color: #ffffff;
+    padding: 8px 14px;
+    font-size: 14px;
+}
+
+.btn-cancelar:hover {
+    background-color: #dc2626;
+}
+
 table {
     width: 100%;
     border-collapse: collapse;
