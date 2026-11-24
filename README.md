@@ -37,7 +37,7 @@ Guia de Instalação:
 1. Pré-requisitos na Máquina
 Certifique-se de que o computador possui instalados:
 • Git
-• Pthon 3.11+
+• Python 3.11+
 • PostgreSQL (rodando na porta 5432) + DBEAVER
 
 2. Clonar o Repositório
@@ -73,7 +73,7 @@ SECRET_KEY=chave_secreta_a3_clinica_vet_2026
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 GOVERNO_API_URL=[http://127.0.0.1:8001](http://127.0.0.1:8001)
-GOVERNO_API_KEY=gov-api-key-secreta-2026
+GOVERNO_API_URL=http://127.0.0.1:8001
 
 5. Subir os Servidores:
 
@@ -90,8 +90,5 @@ cd Clinica-veterinaria\backend\api_governamental
 Teste rápido no navegador: http://127.0.0.1:8001/docs
 
 Terminal 3:
-
-cd Clinica-veterinaria\frontend
-npm install
-npm run dev
+Abra a pasta Clinica-veterinaria\frontend no VS Code, clique com o botão direito em pages\login.html (ou index.html) e selecione "Open in Integrated Browser".
 
