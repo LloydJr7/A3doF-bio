@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vacinação - Clínica Veterinária</title>
+    <link rel="stylesheet" href="../css/vacinas.css">
+    <script src="../js/auth.js"></script>
+    <script src="../js/vacinas.js" defer></script>
+</head>
+<body>
+    <a href="index.html" class="voltar-inicio">← Voltar ao Início</a>
+    <h1>Vacinação dos Animais</h1>
+
+    <main>
+        <section>
+            <h2>Registrar vacinação</h2>
+            <form id="form-vacina">
+                <label for="animal_id">Animal</label>
+                <select id="animal_id" required>
+                    <option value="">Selecione um animal...</option>
+                </select>
+
+                <label for="nome">Vacina</label>
+                <input id="nome" type="text" maxlength="120" required>
+
+                <label class="checkbox-label" for="antirrabica">
+                    <input id="antirrabica" type="checkbox">
+                    Vacinação antirrábica (enviar à integração governamental)
+                </label>
+
+                <label for="fabricante">Fabricante</label>
+                <input id="fabricante" type="text" maxlength="120">
+
+                <label for="lote">Lote</label>
+                <input id="lote" type="text" maxlength="80" required>
+
+                <label for="dose">Dose</label>
+                <input id="dose" type="text" maxlength="40" placeholder="Ex.: dose única, reforço" required>
+
+                <label for="data_aplicacao">Data da aplicação</label>
+                <input id="data_aplicacao" type="date" required>
+
+                <label for="data_proxima_dose">Próxima dose</label>
+                <input id="data_proxima_dose" type="date">
+
+                <label for="observacoes">Observações</label>
+                <textarea id="observacoes" rows="3"></textarea>
+
+                <button type="submit">Registrar vacinação</button>
+            </form>
+        </section>
+
+        <section>
+            <div class="titulo-lista">
+                <h2>Histórico de vacinação</h2>
+                <button id="btn-atualizar" type="button">Atualizar histórico</button>
+            </div>
+            <div class="tabela-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Animal</th>
+                            <th>Vacina / dose</th>
+                            <th>Lote</th>
+                            <th>Próxima dose</th>
+                            <th>Veterinário</th>
+                            <th>Integração governamental</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-vacinas"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

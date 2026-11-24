@@ -1,83 +1,97 @@
-# 🐾 Sistema de Gestão de Clínica Veterinária (A3 - SDM)
+# Sistema de Gestão de Clínica Veterinária & Integração Governamental
 
-Sistema web full-stack para gerenciamento de clínica veterinária, Integrando controle de acesso de veterinários, cadastro de tutores com integração à API pública ViaCEP, gerenciamento de animais, implementação e busca de microchips e agendamento de consultas.
+Sistema completo (Full Stack) para gestão de clínica veterinária com integração governamental para rastreabilidade de microchips RFID e notificação obrigatória de vacinação antirrábica.
 
----
-
-## 🛠️ Tecnologias Utilizadas
-
-- **Backend:** Python 3, FastAPI, Uvicorn, Pydantic, Passlib (bcrypt), HTTPX, SQLAlchemy e Psycopg2.
-- **Banco de Dados:** PostgreSQL (`clinica_db`).
-- **Frontend:** HTML5, CSS3 e JavaScript (Fetch API com interceptação global de autenticação).
-- **Integração Externa:** API Pública [ViaCEP](https://viacep.com.br/).
+### Arquitetura do Sistema
+1. **Frontend (Interface Web):** Aplicação web para recepção e médicos veterinários operarem o sistema (login, tutores, animais, microchips, consultas e vacinas).
+2. **`api_clinica` (Backend Principal — Porta `8000`):** API REST em FastAPI conectada ao **PostgreSQL** (`clinica_db`), responsável pelas regras de negócio, autenticação JWT, consulta de CEP via **ViaCEP** e disparo assíncrono/resiliente para o governo.
+3. **`api_governamental` (Serviço Externo Simulado — Porta `8001`):** API REST em FastAPI conectada ao **SQLite** (`governo.db`), simulando a base nacional de animais microchipados e vacinas antirrábicas com controle de **idempotência** (`Idempotency-Key`).
 
 ---
 
-## 📁 Estrutura do Repositório
+## Estrutura do Repositório
 
 ```text
-├── README.md
-└── Clinica-veterinaria/
-    ├── banco/
-    │   └── db.sql                       # Script de criação das tabelas no PostgreSQL
-    ├── backend/
-    │   ├── api_clinica/
-    │   │   ├── main.py                  # API RESTful FastAPI, regras de negócio e autenticação
-    │   │   ├── conexao.py               # Conexão direta com PostgreSQL (psycopg2)
-    │   │   └── database.py              # Engine SQLAlchemy
-    │   └── api_governamental/           # Módulo de integração governamental e vacinas
-    └── frontend/
-        ├── css/                         # Folhas de estilo padronizadas por módulo
-        ├── js/
-        │   ├── auth.js                  # Interceptador global de requisições e controle de sessão
-        │   ├── login.js                 # Cadastro, confirmação de senha e login de veterinários
-        │   ├── index.js                 # Painel principal com indicadores em tempo real
-        │   ├── tutores.js               # CRUD de tutores e integração ViaCEP
-        │   ├── animais.js               # CRUD de animais
-        │   ├── microchips.js            # Cadastro e consulta rápida por código de microchip
-        │   └── consultas.js             # Agendamento, atualização e cancelamento de consultas
-        └── pages/
-            ├── login.html               # Tela de autenticação e registro de veterinário
-            ├── index.html               # Dashboard inicial
-            ├── tutores.html             # Gestão de tutores e endereços
-            ├── animais.html             # Gestão de animais
-            ├── microchips.html          # Gestão de microchips
-            └── consultas.html           # Gestão de consultas
+Clinica-veterinaria/
+├── backend/
+│   ├── api_clinica/              # API da Clínica (Porta 8000)
+│   │   ├── main.py               # Endpoints e regras de integração
+│   │   ├── database.py           # Conexão SQLAlchemy (PostgreSQL)
+│   │   ├── models.py             # Modelos das tabelas do clinica_db
+│   │   ├── schemas.py            # Validação Pydantic
+│   │   ├── security.py           # Autenticação JWT e hash bcrypt
+│   │   ├── requirements.txt      # Dependências Python
+│   │   └── .env                  # Configurações locais (criar na instalação)
+│   │
+│   └── api_governamental/        # API Governamental (Porta 8001)
+│       ├── main.py               # Endpoints governamentais e idempotência
+│       └── governo.db            # Banco SQLite criado automaticamente
+│
+├── frontend/                     # Interface Web (Site da Clínica)
+├── database/                     # Scripts SQL (DDL e carga inicial)
+└── documentacao/
+    └── colecao_postman.json      # Coleção Postman validada (16 cenários)
 
-⚙️ Pré-requisitos e Instalação
+Guia de Instalação:
 
-1. Banco de Dados PostgreSQL:
+1. Pré-requisitos na Máquina
+Certifique-se de que o computador possui instalados:
+• Git
+• Pthon 3.11+
+• PostgreSQL (rodando na porta 5432) + DBEAVER
 
-    • Crie o banco clinica_db no PostgreSQL e execute o script Clinica-veterinaria/banco/db.sql para criar todas as tabelas e relacionamentos.
+2. Clonar o Repositório
+Abra o terminal (PowerShell ou CMD) e baixe o projeto:
+git clone <URL_DO_REPOSITORIO>
+cd Clinica-veterinaria
 
-    • Configure as credenciais de acesso no arquivo .env dentro de Clinica-veterinaria/backend/api_clinica/.
+3. Configurar o Banco de Dados:
 
-2. Ambiente Virtual e Dependências Python:
-    cd Clinica-veterinaria/backend/api_clinica
-    python -m venv venv
-    # Windows:
-    venv\Scripts\activate
-    # Linux/Mac:
-    source venv/bin/activate
+1- Abra o DBeaver, conecte no PostgreSQL local e crie um banco chamado clinica_db.
 
-    pip install fastapi uvicorn psycopg2-binary sqlalchemy pydantic passlib[bcrypt] httpx python-dotenv
+2- Execute o script SQL de criação das tabelas (localizado na pasta database/ ou raiz do projeto) para criar:usuarios, veterinarios, enderecos, tutores, especies, racas, animais, microchips, consultas, vacinas e integracoes_governo.
 
-▶️ Como Executar o Sistema
+3- Carga Inicial Obrigatória (Seed): Insira pelo menos 1 registro nas tabelas base para permitir cadastros e login imediato:
+INSERT INTO especies (id, nome) VALUES (1, 'Canina'), (2, 'Felina');
+INSERT INTO racas (id, especie_id, nome) VALUES (1, 1, 'Golden Retriever'), (2, 1, 'SRD'), (3, 2, 'Siamês');
 
-1. Iniciar o Backend (API):
-Dentro de Clinica-veterinaria/backend/api_clinica (com o venv ativado), execute:
-    uvicorn main:app --reload
-    • API disponível em: http://127.0.0.1:8000
-    • Documentação interativa (Swagger UI): http://127.0.0.1:8000/docs
 
-2. Iniciar o Frontend:
-    • Abra Clinica-veterinaria/frontend/pages/login.html utilizando a extensão Live Server no VS Code (ou diretamente no navegador).
 
-🔐 Regras de Negócio e Segurança
-    •Autenticação e Controle de Acesso: Senhas armazenadas com hash bcrypt, fluxo de confirmação de cadastro em 6 dígitos e proteção de todas as rotas privadas via token Bearer (auth.js + Depends(verificar_autenticacao)).
+4. Configurar o Backend:
 
-    •Integração ViaCEP: Preenchimento automático de endereço a partir do CEP, com suporte a complementação manual de logradouro, bairro, cidade e UF persistida no PostgreSQL.
+1- Entre na pasta da API da clínica, crie o ambiente virtual e instale as dependências:
 
-    •Integridade Referencial: Impede a exclusão física de tutores que possuam animais vinculados (exigindo inativação). Animais e consultas utilizam exclusão lógica (ativo = FALSE / status cancelada).
+cd backend\api_clinica
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
 
-    •Microchips: Garante unicidade do código e impede múltiplos microchips ativos para o mesmo animal.
+2- Crie o arquivo .env dentro de backend/api_clinica/ (use o .env.example como base, se houver) ajustando a senha do PostgreSQL da máquina atual:
+
+DATABASE_URL=postgresql+psycopg://postgres:SENHA_DO_POSTGRES@localhost:5432/clinica_db
+SECRET_KEY=chave_secreta_a3_clinica_vet_2026
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+GOVERNO_API_URL=[http://127.0.0.1:8001](http://127.0.0.1:8001)
+GOVERNO_API_KEY=gov-api-key-secreta-2026
+
+5. Subir os Servidores:
+
+Terminal 1:
+cd Clinica-veterinaria\backend\api_clinica
+.\venv\Scripts\python.exe -m uvicorn main:app --port 8000 --reload
+
+Teste rápido no navegador: http://127.0.0.1:8000/docs
+
+Terminal 2:
+cd Clinica-veterinaria\backend\api_governamental
+..\api_clinica\venv\Scripts\python.exe -m uvicorn main:app --port 8001 --reload
+
+Teste rápido no navegador: http://127.0.0.1:8001/docs
+
+Terminal 3:
+
+cd Clinica-veterinaria\frontend
+npm install
+npm run dev
+

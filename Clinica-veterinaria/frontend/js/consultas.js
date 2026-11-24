@@ -1,4 +1,3 @@
-
 const API_URL = "http://127.0.0.1:8000";
 
 
@@ -172,23 +171,23 @@ async function carregarConsultas() {
                 linha.appendChild(coluna);
             });
 
-            
             const colunaAcoes = document.createElement("td");
+            colunaAcoes.className = "acoes-consulta";
 
             if (consulta.status === "agendada") {
-                
                 const botaoEditar = document.createElement("button");
                 botaoEditar.type = "button";
                 botaoEditar.textContent = "Editar";
+                botaoEditar.className = "btn-editar";
 
                 botaoEditar.addEventListener("click", () => {
                     editarConsulta(consulta);
                 });
 
-                
                 const botaoCancelar = document.createElement("button");
                 botaoCancelar.type = "button";
                 botaoCancelar.textContent = "Cancelar";
+                botaoCancelar.className = "btn-cancelar";
 
                 botaoCancelar.addEventListener("click", () => {
                     cancelarConsulta(consulta);

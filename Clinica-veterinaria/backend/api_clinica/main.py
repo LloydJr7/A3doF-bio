@@ -5,9 +5,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from passlib.context import CryptContext
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 import httpx
 from database import get_connection
 from database import engine
+from integracao_governo import IntegracaoGovernoError, enviar_vacinacao_antirrabica
 
 app = FastAPI(
     title="Sistema de Clinica Veterinaria",
@@ -1060,3 +1062,231 @@ def cancelar_consulta(consulta_id: int):
         "mensagem": "Consulta cancelada com sucesso!",
         "id": id_cancelado
     }
+
+
+class VacinaCadastro(BaseModel):
+    animal_id: int = Field(gt=0)
+    nome: str = Field(min_length=2, max_length=120)
+    antirrabica: bool = False
+    fabricante: str | None = Field(default=None, max_length=120)
+    lote: str = Field(min_length=1, max_length=80)
+    dose: str = Field(min_length=1, max_length=40)
+    data_aplicacao: date
+    data_proxima_dose: date | None = None
+    observacoes: str | None = None
+
+
+def obter_integracao_vacina(vacina_id: int):
+    with engine.connect() as conexao:
+        resultado = conexao.execute(
+            text("""
+                SELECT id, vacina_id, status, tentativas, protocolo, ultimo_erro,
+                       data_ultima_tentativa, data_envio
+                FROM integracao_governo
+                WHERE vacina_id = :vacina_id
+            """),
+            {"vacina_id": vacina_id}
+        ).mappings().first()
+    return dict(resultado) if resultado else None
+
+
+def tentar_enviar_vacinacao(vacina_id: int):
+    with engine.begin() as conexao:
+        integracao_id = conexao.execute(
+            text("""
+                UPDATE integracao_governo
+                SET status = 'enviando',
+                    tentativas = tentativas + 1,
+                    data_ultima_tentativa = CURRENT_TIMESTAMP,
+                    data_atualizacao = CURRENT_TIMESTAMP,
+                    ultimo_erro = NULL
+                WHERE vacina_id = :vacina_id
+                  AND (
+                      status IN ('pendente', 'erro')
+                      OR (
+                          status = 'enviando'
+                          AND data_ultima_tentativa < CURRENT_TIMESTAMP - INTERVAL '5 minutes'
+                      )
+                  )
+                RETURNING id
+            """),
+            {"vacina_id": vacina_id}
+        ).scalar_one_or_none()
+
+        if integracao_id is None:
+            integracao = conexao.execute(
+                text("""
+                    SELECT id, vacina_id, status, tentativas, protocolo, ultimo_erro,
+                           data_ultima_tentativa, data_envio
+                    FROM integracao_governo
+                    WHERE vacina_id = :vacina_id
+                """),
+                {"vacina_id": vacina_id}
+            ).mappings().first()
+            if integracao is None:
+                raise HTTPException(status_code=404, detail="Integração da vacinação não encontrada.")
+            return dict(integracao)
+
+        dados_vacina = conexao.execute(
+            text("""
+                SELECT v.id, v.animal_id, v.nome, v.fabricante, v.lote, v.dose,
+                       v.data_aplicacao, v.data_proxima_dose, v.observacoes,
+                       a.nome AS animal_nome, e.nome AS especie,
+                       m.codigo AS microchip, vet.crmv, vet.uf_crmv
+                FROM vacina v
+                JOIN animais a ON a.id = v.animal_id
+                JOIN especies e ON e.id = a.especie_id
+                LEFT JOIN microchips m ON m.animal_id = a.id AND m.ativo = TRUE
+                JOIN veterinario vet ON vet.id = v.veterinario_id
+                WHERE v.id = :vacina_id AND v.antirrabica = TRUE
+            """),
+            {"vacina_id": vacina_id}
+        ).mappings().one()
+
+    payload = {
+        "id_vacinacao_clinica": dados_vacina["id"],
+        "animal": {
+            "id_clinica": dados_vacina["animal_id"],
+            "nome": dados_vacina["animal_nome"],
+            "especie": dados_vacina["especie"],
+            "microchip": dados_vacina["microchip"],
+        },
+        "vacina": {
+            "nome": dados_vacina["nome"],
+            "fabricante": dados_vacina["fabricante"],
+            "lote": dados_vacina["lote"],
+            "dose": dados_vacina["dose"],
+            "data_aplicacao": dados_vacina["data_aplicacao"].isoformat(),
+            "data_proxima_dose": (
+                dados_vacina["data_proxima_dose"].isoformat()
+                if dados_vacina["data_proxima_dose"] else None
+            ),
+        },
+        "veterinario": {
+            "crmv": dados_vacina["crmv"],
+            "uf_crmv": dados_vacina["uf_crmv"],
+        },
+    }
+
+    try:
+        protocolo = enviar_vacinacao_antirrabica(payload, f"vacinacao-{vacina_id}")
+    except IntegracaoGovernoError as erro:
+        with engine.begin() as conexao:
+            conexao.execute(
+                text("""
+                    UPDATE integracao_governo
+                    SET status = 'erro', ultimo_erro = :erro,
+                        data_atualizacao = CURRENT_TIMESTAMP
+                    WHERE id = :integracao_id
+                """),
+                {"integracao_id": integracao_id, "erro": str(erro)[:1000]}
+            )
+    else:
+        with engine.begin() as conexao:
+            conexao.execute(
+                text("""
+                    UPDATE integracao_governo
+                    SET status = 'enviado', protocolo = :protocolo,
+                        ultimo_erro = NULL, data_envio = CURRENT_TIMESTAMP,
+                        data_atualizacao = CURRENT_TIMESTAMP
+                    WHERE id = :integracao_id
+                """),
+                {"integracao_id": integracao_id, "protocolo": protocolo}
+            )
+
+    return obter_integracao_vacina(vacina_id)
+
+
+@app.post("/vacinas", status_code=201, dependencies=[Depends(verificar_autenticacao)])
+def cadastrar_vacina(vacina: VacinaCadastro, veterinario_id: int = Depends(verificar_autenticacao)):
+    if vacina.data_proxima_dose and vacina.data_proxima_dose < vacina.data_aplicacao:
+        raise HTTPException(
+            status_code=400,
+            detail="A data da próxima dose não pode ser anterior à data de aplicação."
+        )
+
+    dados = vacina.model_dump()
+    dados["nome"] = dados["nome"].strip()
+    dados["lote"] = dados["lote"].strip()
+    dados["dose"] = dados["dose"].strip()
+    if not dados["nome"] or not dados["lote"] or not dados["dose"]:
+        raise HTTPException(status_code=400, detail="Vacina, lote e dose não podem ficar vazios.")
+    if dados["fabricante"]:
+        dados["fabricante"] = dados["fabricante"].strip()
+
+    try:
+        with engine.begin() as conexao:
+            vacina_id = conexao.execute(
+                text("""
+                    INSERT INTO vacina (
+                        animal_id, veterinario_id, nome, antirrabica, fabricante,
+                        lote, dose, data_aplicacao, data_proxima_dose, observacoes
+                    )
+                    VALUES (
+                        :animal_id, :veterinario_id, :nome, :antirrabica, :fabricante,
+                        :lote, :dose, :data_aplicacao, :data_proxima_dose, :observacoes
+                    )
+                    RETURNING id
+                """),
+                {**dados, "veterinario_id": veterinario_id}
+            ).scalar_one()
+
+            if dados["antirrabica"]:
+                conexao.execute(
+                    text("""
+                        INSERT INTO integracao_governo (vacina_id)
+                        VALUES (:vacina_id)
+                        ON CONFLICT (vacina_id) DO NOTHING
+                    """),
+                    {"vacina_id": vacina_id}
+                )
+    except IntegrityError as erro:
+        if "uq_vacina_registro" in str(erro.orig):
+            raise HTTPException(
+                status_code=409,
+                detail="Esta vacinação já foi registrada para o animal."
+            ) from erro
+        if "fk_vacina_animal" in str(erro.orig):
+            raise HTTPException(status_code=404, detail="Animal não encontrado.") from erro
+        raise
+
+    integracao = tentar_enviar_vacinacao(vacina_id) if dados["antirrabica"] else None
+    return {
+        "mensagem": "Vacinação cadastrada com sucesso.",
+        "id": vacina_id,
+        "integracao": integracao,
+    }
+
+
+@app.get("/vacinas", dependencies=[Depends(verificar_autenticacao)])
+def listar_vacinas(animal_id: int | None = None):
+    consulta = """
+        SELECT v.id, v.animal_id, a.nome AS animal, v.veterinario_id,
+               vet.nome_completo AS veterinario, v.nome, v.antirrabica,
+               v.fabricante, v.lote, v.dose, v.data_aplicacao,
+               v.data_proxima_dose, v.observacoes, v.data_cadastro,
+               ig.status AS integracao_status, ig.tentativas AS integracao_tentativas,
+               ig.ultimo_erro AS integracao_erro, ig.protocolo AS integracao_protocolo,
+               ig.data_ultima_tentativa AS integracao_ultima_tentativa
+        FROM vacina v
+        JOIN animais a ON a.id = v.animal_id
+        JOIN veterinario vet ON vet.id = v.veterinario_id
+        LEFT JOIN integracao_governo ig ON ig.vacina_id = v.id
+    """
+    parametros = {}
+    if animal_id is not None:
+        consulta += " WHERE v.animal_id = :animal_id"
+        parametros["animal_id"] = animal_id
+    consulta += " ORDER BY v.data_aplicacao DESC, v.id DESC"
+
+    with engine.connect() as conexao:
+        registros = conexao.execute(text(consulta), parametros).mappings().all()
+    return [dict(registro) for registro in registros]
+
+
+@app.post(
+    "/vacinas/{vacina_id}/reenviar",
+    dependencies=[Depends(verificar_autenticacao)]
+)
+def reenviar_vacinacao(vacina_id: int):
+    return tentar_enviar_vacinacao(vacina_id)

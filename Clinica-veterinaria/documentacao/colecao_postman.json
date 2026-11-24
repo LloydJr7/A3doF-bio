@@ -1,0 +1,625 @@
+{
+  "info": {
+    "_postman_id": "3f830c5f-8010-4cb2-9af9-2bee874f2d01",
+    "name": "A3 SDM - Clínica Veterinária & API Governamental",
+    "description": "Coleção completa cobrindo os 16 cenários obrigatórios de teste para a disciplina de Sistemas Distribuídos e Mobile.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "60010443",
+    "_collection_link": "https://go.postman.co/collection/60010443-3f830c5f-8010-4cb2-9af9-2bee874f2d01?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "1. Autenticação (Testes 1 a 3)",
+      "item": [
+        {
+          "name": "Teste 01 - Login válido com usuário ativo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {\n    pm.response.to.have.status(200);\n});\nvar jsonData = pm.response.json();\nif (jsonData.access_token) {\n    pm.collectionVariables.set(\"token\", jsonData.access_token);\n}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"veterinaria@clinica.com\",\n    \"senha\": \"123456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "text"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url_clinica}}/login",
+              "host": [
+                "{{base_url_clinica}}"
+              ],
+              "path": [
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Teste 02 - Login bloqueado (usuário inativo / não confirmado)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"inativo@clinica.com\",\n    \"senha\": \"123456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "text"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url_clinica}}/login",
+              "host": [
+                "{{base_url_clinica}}"
+              ],
+              "path": [
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Teste 03 - Login inválido (senha incorreta)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"vet@clinica.com\",\n    \"senha\": \"senha_errada\"\n}",
+              "options": {
+                "raw": {
+                  "language": "text"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url_clinica}}/login",
+              "host": [
+                "{{base_url_clinica}}"
+              ],
+              "path": [
+                "login"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Tutores e ViaCEP (Testes 4 a 6)",
+      "item": [
+        {
+          "name": "Teste 04a - Cadastrar Tutor Válido",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"nome_completo\": \"Carlos Almeida\",\n    \"cpf\": \"12345678901\",\n    \"data_nascimento\": \"1990-05-15\",\n    \"telefone\": \"21999998888\",\n    \"email\": \"carlos@email.com\",\n    \"endereco_id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "text"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url_clinica}}/tutores",
+              "host": [
+                "{{base_url_clinica}}"
+              ],
+              "path": [
+                "tutores"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Teste 04b - Bloquear CPF Duplicado (409 Conflict)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"nome_completo\": \"Carlos Duplicado\",\n    \"cpf\": \"12345678901\",\n    \"data_nascimento\": \"1992-08-20\",\n    \"telefone\": \"21988887777\",\n    \"email\": \"duplicado@email.com\",\n    \"endereco_id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "text"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url_clinica}}/tutores",
+              "host": [
+                "{{base_url_clinica}}"
+              ],
+              "path": [
+                "tutores"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Teste 05 - Consultar CEP Válido (ViaCEP)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url_clinica}}/cep/21331000",
+              "host": [
+                "{{base_url_clinica}}"
+              ],
+              "path": [
+                "cep",
+                "21331000"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Teste 06 - Consultar CEP Inexistente (Tratamento de Falha)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url_clinica}}/cep/99999999",
+              "host": [
+                "{{base_url_clinica}}"
+              ],
+              "path": [
+                "cep",
+                "99999999"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Animais e Microchips (Testes 7 e 8)",
+      "item": [
+        {
+          "name": "Teste 07a - Cadastrar Animal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"nome\": \"Thor\",\n    \"especie_id\": 1,\n    \"raca_id\": 1,\n    \"tutor_id\": 1,\n    \"sexo\": \"Macho\",\n    \"cor\": \"Caramelo\",\n    \"peso_atual\": 28.5\n}",
+              "options": {
+                "raw": {
+                  "language": "text"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url_clinica}}/animais",
+              "host": [
+                "{{base_url_clinica}}"
+              ],
+              "path": [
+                "animais"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Teste 07b - Vincular Microchip RFID ao Animal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"animal_id\": 4,\n    \"codigo\": \"985112000123456\",\n    \"data_implantacao\": \"2026-11-20\",\n    \"local_aplicacao\": \"Região interescapular\"\n}",
+              "options": {
+                "raw": {
+                  "language": "text"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url_clinica}}/microchips",
+              "host": [
+                "{{base_url_clinica}}"
+              ],
+              "path": [
+                "microchips"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Teste 08 - Bloquear Microchip Duplicado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"animal_id\": 4,\n    \"codigo\": \"985112000123456\",\n    \"data_implantacao\": \"2026-11-20\",\n    \"local_aplicacao\": \"Região interescapular\"\n}",
+              "options": {
+                "raw": {
+                  "language": "text"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url_clinica}}/microchips",
+              "host": [
+                "{{base_url_clinica}}"
+              ],
+              "path": [
+                "microchips"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Consultas e Vacinas Comuns (Testes 9 e 10)",
+      "item": [
+        {
+          "name": "Teste 09a - Agendar Consulta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"animal_id\": 4,\n    \"veterinario_id\": 1,\n    \"data_hora\": \"2026-11-26T14:00:00\",\n    \"motivo\": \"Check-up anual e vacinação\",\n    \"observacoes\": \"Animal em bom estado geral\"\n}",
+              "options": {
+                "raw": {
+                  "language": "text"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url_clinica}}/consultas",
+              "host": [
+                "{{base_url_clinica}}"
+              ],
+              "path": [
+                "consultas"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Teste 09b - Listar Consultas (Histórico)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url_clinica}}/consultas",
+              "host": [
+                "{{base_url_clinica}}"
+              ],
+              "path": [
+                "consultas"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Teste 10 & 13 - Registrar Vacina Comum (V10 - Sem Envio ao Governo)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"animal_id\": 4,\n    \"veterinario_id\": 1,\n    \"nome\": \"V10 Polivalente\",\n    \"fabricante\": \"Zoetis\",\n    \"lote\": \"LOTE-V10-2026\",\n    \"dose\": \"1ª Dose\",\n    \"data_aplicacao\": \"2026-11-23\",\n    \"data_proxima_dose\": \"2026-12-23\",\n    \"antirrabica\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "text"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url_clinica}}/vacinas",
+              "host": [
+                "{{base_url_clinica}}"
+              ],
+              "path": [
+                "vacinas"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. API Governamental & Antirrábica (Testes 11 a 16)",
+      "item": [
+        {
+          "name": "Teste 11a - Governo: Cadastrar Animal RFID (POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"microchip\": \"985112000123456\",\n    \"nome\": \"Thor\",\n    \"especie\": \"Canina\",\n    \"raca\": \"Golden Retriever\",\n    \"tutor_cpf\": \"12345678901\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url_governo}}/api/governo/animais",
+              "host": [
+                "{{base_url_governo}}"
+              ],
+              "path": [
+                "api",
+                "governo",
+                "animais"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Teste 11b - Governo: Consultar Animal por Microchip (GET)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url_governo}}/api/governo/animais/985112000123456",
+              "host": [
+                "{{base_url_governo}}"
+              ],
+              "path": [
+                "api",
+                "governo",
+                "animais",
+                "985112000123456"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Teste 11c - Governo: Atualizar Animal por Microchip (PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"nome\": \"Thor Odinson\",\n    \"raca\": \"Golden Retriever\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url_governo}}/api/governo/animais/985112000123456",
+              "host": [
+                "{{base_url_governo}}"
+              ],
+              "path": [
+                "api",
+                "governo",
+                "animais",
+                "985112000123456"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Teste 12 - Vacina Antirrábica com Envio Automático (Protocolo GOV)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"animal_id\": 4,\n    \"veterinario_id\": 1,\n    \"nome\": \"Antirrábica Raivacel\",\n    \"fabricante\": \"Vallée\",\n    \"lote\": \"RAIVA-2026-A1\",\n    \"dose\": \"Dose Única\",\n    \"data_aplicacao\": \"2026-11-23\",\n    \"data_proxima_dose\": \"2027-11-23\",\n    \"antirrabica\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "text"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url_clinica}}/vacinas",
+              "host": [
+                "{{base_url_clinica}}"
+              ],
+              "path": [
+                "vacinas"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Teste 14 - Falha Governamental (Rodar com porta 8001 desligada)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"animal_id\": 4,\n    \"veterinario_id\": 1,\n    \"nome\": \"Antirrábica Defensor\",\n    \"fabricante\": \"Zoetis\",\n    \"lote\": \"RAIVA-OFFLINE-01\",\n    \"dose\": \"Reforço Anual\",\n    \"data_aplicacao\": \"2026-11-23\",\n    \"antirrabica\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "text"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url_clinica}}/vacinas",
+              "host": [
+                "{{base_url_clinica}}"
+              ],
+              "path": [
+                "vacinas"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Teste 15 - Reenvio Pendente após Retorno da API Governo",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url_clinica}}/vacinas/3/reenviar",
+              "host": [
+                "{{base_url_clinica}}"
+              ],
+              "path": [
+                "vacinas",
+                "3",
+                "reenviar"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Teste 16 - Idempotência (Mesma Idempotency-Key sem duplicar)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "teste-idempotencia-2026-001"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"id_vacinacao_clinica\": 99,\n    \"animal\": {\n        \"id_clinica\": 1,\n        \"nome\": \"Thor\",\n        \"especie\": \"Canina\",\n        \"microchip\": \"985112000123456\"\n    },\n    \"vacina\": {\n        \"nome\": \"Antirrábica\",\n        \"fabricante\": \"Zoetis\",\n        \"lote\": \"LOTE-IDEMP-01\",\n        \"dose\": \"Única\",\n        \"data_aplicacao\": \"2026-11-23\"\n    },\n    \"veterinario\": {\n        \"crmv\": \"12345\",\n        \"uf_crmv\": \"RJ\"\n    }\n}"
+            },
+            "url": {
+              "raw": "{{base_url_governo}}/api/governo/vacinacoes-antirrabicas",
+              "host": [
+                "{{base_url_governo}}"
+              ],
+              "path": [
+                "api",
+                "governo",
+                "vacinacoes-antirrabicas"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "2fe7e6ffc5e4c05a0bacfc6f530864043a110284f68979f659f0f8df757bdca9",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url_clinica",
+      "value": "http://127.0.0.1:8000"
+    },
+    {
+      "key": "base_url_governo",
+      "value": "http://127.0.0.1:8001"
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ]
+}
