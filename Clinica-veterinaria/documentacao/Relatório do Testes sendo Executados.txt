@@ -1,0 +1,127 @@
+================================================================================
+9. RELATÓRIO DOS TESTES EXECUTADOS
+Projeto: Sistema Distribuído de Clínica Veterinária & Integração Governamental
+================================================================================
+
+1. RESUMO DA EXECUÇÃO
+Os testes funcionais, de segurança e de integração distribuída foram executados 
+sobre a API Privada da Clínica Veterinária (porta 8000, banco PostgreSQL) e a 
+API Governamental Simulada (porta 8001, banco SQLite), utilizando a coleção 
+automatizada/estruturada no Postman (documentacao/colecao_postman.json).
+
+Foram validados 16 cenários cobrindo fluxos positivos, bloqueios de regras de 
+negócio, integração com serviço externo (ViaCEP), tolerância a falhas de rede 
+e idempotência.
+
+--------------------------------------------------------------------------------
+2. TABELA DE CASOS DE TESTE EXECUTADOS
+--------------------------------------------------------------------------------
+[Teste 01] Login válido com usuário ativo
+- Endpoint: POST http://127.0.0.1:8000/login
+- Esperado: Status 200 OK e retorno do token de sessão e dados do veterinário.
+- Obtido: Status 200 OK com token gerado com sucesso.
+- Status: APROVADO
+
+[Teste 02] Login bloqueado (usuário inativo / não confirmado)
+- Endpoint: POST http://127.0.0.1:8000/login
+- Esperado: Bloqueio de acesso com status 403 Forbidden.
+- Obtido: Status 403 Forbidden.
+- Status: APROVADO
+
+[Teste 03] Login inválido (senha incorreta)
+- Endpoint: POST http://127.0.0.1:8000/login
+- Esperado: Bloqueio de autenticação com status 401 Unauthorized.
+- Obtido: Status 401 Unauthorized.
+- Status: APROVADO
+
+[Teste 04a] Cadastrar Tutor Válido
+- Endpoint: POST http://127.0.0.1:8000/tutores
+- Esperado: Persistência no PostgreSQL e retorno 201 Created.
+- Obtido: Status 201 Created.
+- Status: APROVADO
+
+[Teste 04b] Bloquear CPF Duplicado
+- Endpoint: POST http://127.0.0.1:8000/tutores
+- Esperado: Validação de unicidade bloqueando com status 409 Conflict.
+- Obtido: Status 409 Conflict.
+- Status: APROVADO
+
+[Teste 05] Consultar CEP Válido (Integração ViaCEP)
+- Endpoint: GET http://127.0.0.1:8000/cep/21331000
+- Esperado: Consulta externa ao ViaCEP e retorno 200 OK com logradouro/bairro.
+- Obtido: Status 200 OK com endereço completo retornado.
+- Status: APROVADO
+
+[Teste 06] Consultar CEP Inexistente (Tratamento de Falha Externa)
+- Endpoint: GET http://127.0.0.1:8000/cep/99999999
+- Esperado: Tratamento gracioso do erro sem indisponibilidade da API.
+- Obtido: Erro tratado e mensagem clara retornada ao cliente.
+- Status: APROVADO
+
+[Teste 07a] Cadastrar Animal
+- Endpoint: POST http://127.0.0.1:8000/animais
+- Esperado: Registro vinculado ao tutor/espécie/raça com status 201 Created.
+- Obtido: Status 201 Created com retorno do ID do animal.
+- Status: APROVADO
+
+[Teste 07b] Vincular Microchip RFID ao Animal
+- Endpoint: POST http://127.0.0.1:8000/microchips
+- Esperado: Vínculo único 1:1 entre animal e chip RFID (201 Created).
+- Obtido: Status 201 Created.
+- Status: APROVADO
+
+[Teste 08] Bloquear Microchip Duplicado
+- Endpoint: POST http://127.0.0.1:8000/microchips
+- Esperado: Bloqueio de código RFID ou animal já chipado (409 Conflict).
+- Obtido: Status 409 Conflict ("Animal ou código já possui microchip cadastrado").
+- Status: APROVADO
+
+[Teste 09a] Agendar Consulta
+- Endpoint: POST http://127.0.0.1:8000/consultas
+- Esperado: Criação de agendamento clínico com status 201 Created.
+- Obtido: Status 201 Created.
+- Status: APROVADO
+
+[Teste 09b] Listar Consultas (Histórico)
+- Endpoint: GET http://127.0.0.1:8000/consultas
+- Esperado: Retorno da lista de atendimentos agendados/realizados (200 OK).
+- Obtido: Status 200 OK.
+- Status: APROVADO
+
+[Teste 10 & 13] Registrar Vacina Comum (V10 - Sem Envio ao Governo)
+- Endpoint: POST http://127.0.0.1:8000/vacinas
+- Esperado: Salvar apenas na base local da clínica, sem acionar API governamental.
+- Obtido: Status 201 Created; registro mantido estritamente local.
+- Status: APROVADO
+
+[Teste 11a & 11b] Governo: Cadastrar e Consultar Animal RFID
+- Endpoint: POST / GET http://127.0.0.1:8001/api/governo/animais
+- Esperado: Sincronização e consulta pública por microchip na base governamental.
+- Obtido: Status 201 Created e 200 OK.
+- Status: APROVADO
+
+[Teste 12, 14 & 15] Vacina Antirrábica, Falha de Rede e Reenvio
+- Endpoint: POST /vacinas e POST /vacinas/{id}/reenviar
+- Esperado: Envio automático ao governo quando online; marcação como pendente 
+  quando offline e sincronização posterior via endpoint de reenvio.
+- Obtido: Persistência local garantida mesmo com porta 8001 offline e 
+  sincronização concluída após reenvio.
+- Status: APROVADO
+
+[Teste 16] Idempotência (Mesma Idempotency-Key sem duplicar)
+- Endpoint: POST http://127.0.0.1:8001/api/governo/vacinacoes-antirrabicas
+- Esperado: Ao reenviar requisição com a mesma Idempotency-Key, retornar o 
+  protocolo já gerado sem criar registro duplicado no banco governamental.
+- Obtido: Status 201 Created com mensagem "Solicitação já processada 
+  anteriormente (idempotência garantida)." e retorno do mesmo protocolo.
+- Status: APROVADO
+
+--------------------------------------------------------------------------------
+3. CONCLUSÃO TÉCNICA
+--------------------------------------------------------------------------------
+Todos os 16 cenários planejados foram executados com 100% de aprovação. Os 
+testes comprovaram o isolamento de autenticação nas rotas privadas, a 
+integridade referencial e unicidade de chaves (CPF e RFID) e a resiliência 
+da arquitetura distribuída frente a falhas de comunicação e retentativas 
+idempotentes entre a clínica e o órgão governamental.
+================================================================================
