@@ -7,7 +7,7 @@ Sistema completo (Full Stack) para gestão de clínica veterinária com integra�
 2. **`api_clinica` (Backend Principal — Porta `8000`):** API REST em FastAPI conectada ao **PostgreSQL** (`clinica_db`), responsável pelas regras de negócio, autenticação JWT, consulta de CEP via **ViaCEP** e disparo assíncrono/resiliente para o governo.
 3. **`api_governamental` (Serviço Externo Simulado — Porta `8001`):** API REST em FastAPI conectada ao **SQLite** (`governo.db`), simulando a base nacional de animais microchipados e vacinas antirrábicas com controle de **idempotência** (`Idempotency-Key`).
 
----
+--
 
 ## Estrutura do Repositório
 
